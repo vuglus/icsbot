@@ -27,6 +27,7 @@ def parse_ics_content(ics_content: str) -> List[Dict]:
                     'location': str(component.get('location', '')),
                     'start': component.get('dtstart').dt if component.get('dtstart') else None,
                     'end': component.get('dtend').dt if component.get('dtend') else None,
+                    'duration': component.get('duration') if component.get('duration') else None,
                     'all_day': False
                 }
                 
@@ -52,6 +53,22 @@ def parse_ics_content(ics_content: str) -> List[Dict]:
                         event['end'] = event['end'].isoformat()
                     else:
                         event['end'] = event['end'].isoformat()
+                elif event['duration'] and event['start']:
+                    # Calculate end datetime based on duration
+                    from datetime import timedelta
+                    if isinstance(event['start'], str):
+                        # Parse the start datetime string
+                        from dateutil import parser
+                        start_dt = parser.parse(event['start'])
+                    else:
+                        start_dt = event['start']
+                    
+                    # Calculate end datetime
+                    end_dt = start_dt + event['duration'].dt
+                    event['end'] = end_dt.isoformat()
+                elif not event['end'] and event['start']:
+                    # If end datetime is still missing, set it to start datetime
+                    event['end'] = event['start']
                 
                 events.append(event)
         

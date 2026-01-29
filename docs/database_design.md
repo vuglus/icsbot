@@ -45,6 +45,8 @@ Columns:
 - sync_hash: Hash of last synced calendar content (for change detection)
 - created_at: Timestamp when the calendar was added
 
+Note: The combination of user_id and url is unique, preventing duplicate calendar entries for the same user.
+
 ### Events Table
 ```
 CREATE TABLE events (

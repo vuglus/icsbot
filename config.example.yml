@@ -9,6 +9,9 @@ SYNC_INTERVAL_MINUTES: 15
 # Notification check interval in seconds
 NOTIFY_INTERVAL_SECONDS: 60
 
+# Notification time before event in minutes (default: 1440 = 24 hours)
+NOTIFY_BEFORE_MINUTES: 1440
+
 # Path to SQLite database
 DB_PATH: "/data/icsgate.db"
 

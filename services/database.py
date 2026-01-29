@@ -24,65 +24,16 @@ def get_db_connection():
 
 # Database initialization
 def init_db():
-    """Initialize the database with required tables"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    """Initialize the database by running all migrations"""
+    logger.info("Initializing database")
     
-    # Create users table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT UNIQUE NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Create calendars table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS calendars (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            url TEXT NOT NULL,
-            last_sync_at TIMESTAMP,
-            sync_hash TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-            UNIQUE(user_id, url)
-        )
-    ''')
-    
-    # Create events table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            calendar_id INTEGER NOT NULL,
-            uid TEXT NOT NULL,
-            title TEXT,
-            description TEXT,
-            location TEXT,
-            start_datetime TIMESTAMP NOT NULL,
-            end_datetime TIMESTAMP NOT NULL,
-            all_day BOOLEAN DEFAULT FALSE,
-            notified BOOLEAN DEFAULT FALSE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (calendar_id) REFERENCES calendars (id) ON DELETE CASCADE
-        )
-    ''')
-    
-    # Create indexes
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_calendars_user_id ON calendars (user_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_events_calendar_id ON events (calendar_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_events_start_datetime ON events (start_datetime)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_events_notified ON events (notified)')
-    
-    # Check if tables were created
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-    tables = cursor.fetchall()
-    print(f"Tables created: {[table[0] for table in tables]}")
-    
-    conn.commit()
-    conn.close()
-    logger.info("Database initialized successfully")
+    # Run migrations
+    try:
+        from migrations.migration_manager import run_all_migrations
+        run_all_migrations()
+    except Exception as e:
+        logger.error(f"Error running migrations: {e}")
+        raise
 
 # Database models
 class User:
@@ -184,8 +135,23 @@ def get_calendars() -> List[Calendar]:
     rows = cursor.fetchall()
     conn.close()
     
-    return [Calendar(row['id'], row['user_id'], row['url'], 
+    return [Calendar(row['id'], row['user_id'], row['url'],
                      row['last_sync_at'], row['sync_hash']) for row in rows]
+
+def get_calendar_by_id(calendar_id: int) -> Calendar:
+    """Get a specific calendar by ID"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT * FROM calendars WHERE id = ?', (calendar_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return Calendar(row['id'], row['user_id'], row['url'],
+                          row['last_sync_at'], row['sync_hash'])
+    else:
+        return None
 
 def update_calendar_sync(calendar_id: int, sync_hash: str):
     """Update calendar sync metadata"""
@@ -227,8 +193,9 @@ def get_pending_events(user_id: str = None) -> List[Event]:
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Calculate notification window (10 minutes before event by default)
-    notify_before_minutes = int(os.environ.get('NOTIFY_BEFORE_MINUTES', 10))
+    # Calculate notification window (default 24 hours before event)
+    from .config_service import get_notify_before_minutes
+    notify_before_minutes = get_notify_before_minutes()
     
     # Build query based on whether user_id is provided
     if user_id:

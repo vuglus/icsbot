@@ -37,7 +37,7 @@ def sync_calendar(calendar: Calendar) -> bool:
         # Insert new events
         for event_data in events:
             cursor.execute('''
-                INSERT INTO events (calendar_id, uid, title, description, location, 
+                INSERT INTO events (calendar_id, uid, title, description, location,
                                    start_datetime, end_datetime, all_day)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', (calendar.id, event_data['uid'], event_data['summary'],
