@@ -1,0 +1,22 @@
+# ICS-Gate Configuration Example
+
+# API key for accessing the service
+api_key: "your-secret-api-key-here"
+
+# ICS synchronization interval in minutes
+SYNC_INTERVAL_MINUTES: 15
+
+# Notification check interval in seconds
+NOTIFY_INTERVAL_SECONDS: 60
+
+# Path to SQLite database
+DB_PATH: "/data/icsgate.db"
+
+# Default timezone
+TIMEZONE_DEFAULT: "UTC"
+
+# Calendar configurations
+calendars:
+  # User ID mapped to calendar URL
+  "user1": "https://calendar.google.com/calendar/ical/..."
+  "user2": "https://outlook.office365.com/owa/calendar/..."

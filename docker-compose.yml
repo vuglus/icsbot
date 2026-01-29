@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  ics-gate:
+    build: .
+    container_name: ics-gate
+    ports:
+      - "5800:5800"
+    environment:
+      - CONFIG_PATH=/config/config.yml
+      - TIMEZONE_DEFAULT=UTC
+    volumes:
+      - icsgate_data:/data
+      - ./config.yml:/config/config.yml:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5800/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  icsgate_data: /data
