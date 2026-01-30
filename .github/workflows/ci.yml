@@ -31,10 +31,6 @@ jobs:
         run: |
           pytest -q
 
-      - name: Build Docker image
-        run: |
-          docker build -t icsbot:ci .
-
       - name: Check SSH connectivity
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -77,6 +73,7 @@ jobs:
               --name icsbot \
               -p 5800:5800 \
               -v ~/icsbot/config:/config:ro \
+              -v ~/icsbot/data:/data \
               -e CONFIG_PATH=/config/config.yml \
               --restart unless-stopped \
               icsbot:ci
