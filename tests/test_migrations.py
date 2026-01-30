@@ -2,6 +2,7 @@ import sys
 import os
 import tempfile
 import sqlite3
+import pytest
 
 # Add the services directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -35,7 +36,6 @@ def test_migration_framework():
         conn.close()
         
         print("Test passed: Migration framework works correctly")
-        return True
         
     finally:
         # Clean up the temporary database
@@ -163,7 +163,6 @@ def test_remove_calendar_duplicates_migration():
         assert calendar_id_3 in calendar_ids_after, "Unique calendar should be kept"
         
         print("Test passed: Remove calendar duplicates migration works correctly")
-        return True
         
     finally:
         # Clean up the temporary database
@@ -173,6 +172,10 @@ def test_remove_calendar_duplicates_migration():
             pass  # Ignore errors during cleanup
 
 if __name__ == "__main__":
-    test_migration_framework()
-    test_remove_calendar_duplicates_migration()
-    print("All migration tests passed!")
+    try:
+        test_migration_framework()
+        test_remove_calendar_duplicates_migration()
+        print("All migration tests passed!")
+    except Exception as e:
+        print(f"Migration tests failed: {e}")
+        sys.exit(1)

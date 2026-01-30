@@ -4,3 +4,4 @@ config.yml
 icsgate.db
 test.db
 .codeassistant
+.pytest_cache

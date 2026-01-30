@@ -1,12 +1,12 @@
 import sys
 import os
 import tempfile
+import pytest
 
 # Add the services directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from services.database import init_db, create_user, create_calendar, get_calendars, set_db_path
-import sqlite3
 
 def test_calendar_uniqueness():
     """Test that duplicate calendar entries are prevented"""
@@ -40,11 +40,15 @@ def test_calendar_uniqueness():
         assert len(calendars) == 1, f"Expected 1 calendar, but found {len(calendars)}"
         
         print("Test passed: Duplicate calendar prevention works correctly")
-        return True
         
     finally:
         # Clean up the temporary database
         os.unlink(temp_db.name)
 
 if __name__ == "__main__":
-    test_calendar_uniqueness()
+    try:
+        test_calendar_uniqueness()
+        print("Calendar uniqueness test passed!")
+    except Exception as e:
+        print(f"Calendar uniqueness test failed: {e}")
+        sys.exit(1)

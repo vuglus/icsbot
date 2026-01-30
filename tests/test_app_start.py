@@ -8,6 +8,7 @@ import sys
 import tempfile
 import subprocess
 import time
+import pytest
 
 def test_app_start():
     """Test that the application can start correctly"""
@@ -64,10 +65,8 @@ calendars:
             print(f"Application failed to start. Exit code: {process.returncode}")
             print(f"Stdout: {stdout.decode()}")
             print(f"Stderr: {stderr.decode()}")
-            return False
+            pytest.fail("Application failed to start")
             
-        return True
-        
     finally:
         # Clean up temporary files
         if os.path.exists(tmp_config_path):
@@ -76,9 +75,9 @@ calendars:
             os.unlink(tmp_db_path)
 
 if __name__ == '__main__':
-    success = test_app_start()
-    if success:
+    try:
+        test_app_start()
         print("Application startup test passed! ✓")
-    else:
-        print("Application startup test failed! ✗")
+    except Exception as e:
+        print(f"Application startup test failed! ✗: {e}")
         sys.exit(1)
