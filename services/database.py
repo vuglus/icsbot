@@ -43,16 +43,17 @@ class User:
         self.created_at = created_at
 
 class Calendar:
-    def __init__(self, id: int, user_id: int, url: str, last_sync_at: str, sync_hash: str):
+    def __init__(self, id: int, user_id: int, url: str, last_sync_at: str, sync_hash: str, timezone: str = 'GMT+3'):
         self.id = id
         self.user_id = user_id
         self.url = url
         self.last_sync_at = last_sync_at
         self.sync_hash = sync_hash
+        self.timezone = timezone
 
 class Event:
     def __init__(self, id: int, calendar_id: int, uid: str, title: str, description: str,
-                 location: str, start_datetime: str, end_datetime: str, all_day: bool, notified: bool, user_id: str = None):
+                 location: str, start_datetime: str, end_datetime: str, all_day: bool, notified: bool, user_id: str = None, calendar_timezone: str = None):
         self.id = id
         self.calendar_id = calendar_id
         self.uid = uid
@@ -64,6 +65,7 @@ class Event:
         self.all_day = all_day
         self.notified = notified
         self.user_id = user_id
+        self.calendar_timezone = calendar_timezone
 
 # Database operations
 def create_user(user_id: str) -> User:
@@ -106,7 +108,7 @@ def create_calendar(user_id: int, url: str) -> Calendar:
         conn.commit()
         calendar_id = cursor.lastrowid
         logger.info(f"Created calendar {calendar_id} for user {user_id}")
-        calendar = Calendar(calendar_id, user_id, url, None, None)
+        calendar = Calendar(calendar_id, user_id, url, None, None, 'GMT+3')
     except sqlite3.IntegrityError as e:
         # Handle duplicate calendar entry
         conn.rollback()
@@ -118,7 +120,8 @@ def create_calendar(user_id: int, url: str) -> Calendar:
         row = cursor.fetchone()
         if row:
             calendar = Calendar(row['id'], row['user_id'], row['url'],
-                                  row['last_sync_at'], row['sync_hash'])
+                                  row['last_sync_at'], row['sync_hash'],
+                                  row['timezone'] if 'timezone' in row.keys() else 'GMT+3')
         else:
             raise Exception("Failed to retrieve existing calendar")
     finally:
@@ -136,7 +139,8 @@ def get_calendars() -> List[Calendar]:
     conn.close()
     
     return [Calendar(row['id'], row['user_id'], row['url'],
-                     row['last_sync_at'], row['sync_hash']) for row in rows]
+                     row['last_sync_at'], row['sync_hash'],
+                     row['timezone'] if 'timezone' in row.keys() else 'GMT+3') for row in rows]
 
 def get_calendar_by_id(calendar_id: int) -> Calendar:
     """Get a specific calendar by ID"""
@@ -149,7 +153,8 @@ def get_calendar_by_id(calendar_id: int) -> Calendar:
     
     if row:
         return Calendar(row['id'], row['user_id'], row['url'],
-                          row['last_sync_at'], row['sync_hash'])
+                          row['last_sync_at'], row['sync_hash'],
+                          row['timezone'] if 'timezone' in row.keys() else 'GMT+3')
     else:
         return None
 
@@ -207,7 +212,7 @@ def get_pending_events(user_id: str = None) -> List[Event]:
             raise ValueError(f"User {user_id} not found")
         
         cursor.execute('''
-            SELECT e.*, u.user_id as user_id FROM events e
+            SELECT e.*, u.user_id as user_id, c.timezone as calendar_timezone FROM events e
             JOIN calendars c ON e.calendar_id = c.id
             JOIN users u ON c.user_id = u.id
             WHERE e.notified = FALSE
@@ -244,7 +249,7 @@ def get_pending_events(user_id: str = None) -> List[Event]:
             print(f"    Is future: {start_jd > now_jd}, Is within window: {start_jd <= window_end_jd}")
         
         cursor.execute('''
-            SELECT e.*, u.user_id as user_id FROM events e
+            SELECT e.*, u.user_id as user_id, c.timezone as calendar_timezone FROM events e
             JOIN calendars c ON e.calendar_id = c.id
             JOIN users u ON c.user_id = u.id
             WHERE e.notified = FALSE
@@ -267,7 +272,8 @@ def get_pending_events(user_id: str = None) -> List[Event]:
         event = Event(row['id'], row['calendar_id'], row['uid'], row['title'],
                       row['description'], row['location'], row['start_datetime'],
                       row['end_datetime'], row['all_day'], row['notified'],
-                      row['user_id'] if 'user_id' in row.keys() else None)
+                      row['user_id'] if 'user_id' in row.keys() else None,
+                      row['calendar_timezone'] if 'calendar_timezone' in row.keys() else None)
         events.append(event)
     
     return events

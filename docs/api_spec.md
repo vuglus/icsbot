@@ -40,14 +40,19 @@ Returns a list of events that are ready for notification.
       "title": "Team Meeting",
       "description": "Weekly team meeting",
       "location": "Conference Room 1",
-      "start_datetime": "2023-06-15T10:00:00Z",
-      "end_datetime": "2023-06-15T11:00:00Z",
+      "start_datetime": "2023-06-15T10:00:00+03:00",
+      "end_datetime": "2023-06-15T11:00:00+03:00",
       "all_day": false,
-      "user_id": "user123"
+      "user_id": "user123",
+      "calendar_timezone": "GMT+3"
     }
   ]
 }
 ```
+
+#### Notes
+- The `start_datetime` and `end_datetime` values are in the timezone of the calendar (`calendar_timezone`).
+- All datetime values follow the ISO 8601 format with timezone information.
 
 #### Response Codes
 - 200: Success
@@ -102,10 +107,11 @@ Confirms that a notification has been successfully delivered to the client.
   "title": "Team Meeting",
   "description": "Weekly team meeting",
   "location": "Conference Room 1",
-  "start_datetime": "2023-06-15T10:00:00Z",
-  "end_datetime": "2023-06-15T11:00:00Z",
+  "start_datetime": "2023-06-15T10:00:00+03:00",
+  "end_datetime": "2023-06-15T11:00:00+03:00",
   "all_day": false,
-  "user_id": "user123"
+  "user_id": "user123",
+  "calendar_timezone": "GMT+3"
 }
 ```
 

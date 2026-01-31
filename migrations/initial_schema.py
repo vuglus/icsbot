@@ -29,6 +29,7 @@ def run():
                 url TEXT NOT NULL,
                 last_sync_at TIMESTAMP,
                 sync_hash TEXT,
+                timezone TEXT DEFAULT 'GMT+3',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
                 UNIQUE(user_id, url)

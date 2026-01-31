@@ -89,10 +89,12 @@ def run_all_migrations():
         # Import migrations here to avoid circular imports
         from migrations import initial_schema
         from migrations import remove_calendar_duplicates
+        from migrations import add_calendar_timezone
         
         # Run migrations in order
         run_migration("initial_schema", initial_schema.run)
         run_migration("remove_calendar_duplicates", remove_calendar_duplicates.run)
+        run_migration("add_calendar_timezone", add_calendar_timezone.run)
         
         logger.info("All migrations completed")
     except Exception as e:

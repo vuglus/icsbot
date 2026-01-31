@@ -44,6 +44,7 @@ Columns:
 - last_sync_at: Timestamp of last successful synchronization
 - sync_hash: Hash of last synced calendar content (for change detection)
 - created_at: Timestamp when the calendar was added
+- timezone: Timezone for the calendar (default: GMT+3)
 
 Note: The combination of user_id and url is unique, preventing duplicate calendar entries for the same user.
 
