@@ -50,7 +50,8 @@ def run():
                 all_day BOOLEAN DEFAULT FALSE,
                 notified BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (calendar_id) REFERENCES calendars (id) ON DELETE CASCADE
+                FOREIGN KEY (calendar_id) REFERENCES calendars (id) ON DELETE CASCADE,
+                UNIQUE(uid, calendar_id)
             )
         ''')
         

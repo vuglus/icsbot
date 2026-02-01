@@ -90,11 +90,16 @@ def run_all_migrations():
         from migrations import initial_schema
         from migrations import remove_calendar_duplicates
         from migrations import add_calendar_timezone
+        from migrations import enforce_calendar_unique_constraint
+        from migrations import m20260201_unique_event
+        
         
         # Run migrations in order
         run_migration("initial_schema", initial_schema.run)
         run_migration("remove_calendar_duplicates", remove_calendar_duplicates.run)
         run_migration("add_calendar_timezone", add_calendar_timezone.run)
+        run_migration("enforce_calendar_unique_constraint", enforce_calendar_unique_constraint.run)
+        run_migration("migrations/m20260201_unique_event", m20260201_unique_event.run)
         
         logger.info("All migrations completed")
     except Exception as e:
