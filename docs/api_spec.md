@@ -97,6 +97,53 @@ Confirms that a notification has been successfully delivered to the client.
 - 404: Event not found
 - 500: Internal server error
 
+### Create Calendar
+```
+POST /calendars
+```
+
+#### Description
+Creates a new calendar for a user. If a calendar with the same URL already exists for the user, returns the existing calendar.
+
+#### Request Body
+```json
+{
+  "user_id": "user123",
+  "url": "https://example.com/calendar.ics"
+}
+```
+
+#### Response
+```json
+{
+  "status": "success",
+  "message": "Calendar created successfully",
+  "calendar": {
+    "id": 123,
+    "user_id": 1,
+    "url": "https://example.com/calendar.ics",
+    "timezone": "GMT+3"
+  }
+}
+```
+
+#### Response Codes
+- 201: Created (new calendar) or existing calendar returned
+- 400: Bad request (missing/invalid parameters)
+- 401: Unauthorized
+- 500: Internal server error
+
+#### Example Usage
+```
+POST /calendars
+Content-Type: application/json
+X-API-Key: your-api-key
+
+{
+  "user_id": "user123",
+  "url": "https://example.com/calendar.ics"
+}
+```
 ## Data Models
 
 ### Event

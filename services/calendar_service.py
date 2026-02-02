@@ -8,7 +8,7 @@ from .database import create_event, Calendar
 logger = logging.getLogger(__name__)
 
 def sync_calendar(calendar: Calendar) -> bool:
-    """Sync a single calendar"""
+    """Sync a single calendar using upsert logic"""
     try:
         logger.info(f"Syncing calendar {calendar.id} from {calendar.url}")
         
@@ -31,18 +31,47 @@ def sync_calendar(calendar: Calendar) -> bool:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Clear existing events for this calendar
-        cursor.execute('DELETE FROM events WHERE calendar_id = ?', (calendar.id,))
+        # Get existing event UIDs for this calendar
+        cursor.execute('SELECT uid FROM events WHERE calendar_id = ?', (calendar.id,))
+        existing_uids = {row[0] for row in cursor.fetchall()}
         
-        # Insert new events
+        # Track which events we're updating/inserting
+        updated_uids = set()
+        
+        # Upsert events
         for event_data in events:
+            uid = event_data['uid']
+            updated_uids.add(uid)
+            
+            # Try to update existing event
             cursor.execute('''
-                INSERT INTO events (calendar_id, uid, title, description, location,
-                                   start_datetime, end_datetime, all_day)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (calendar.id, event_data['uid'], event_data['summary'],
-                  event_data['description'], event_data['location'],
-                  event_data['start'], event_data['end'], event_data['all_day']))
+                UPDATE events
+                SET title = ?, description = ?, location = ?,
+                    start_datetime = ?, end_datetime = ?, all_day = ?
+                WHERE calendar_id = ? AND uid = ?
+            ''', (event_data['summary'], event_data['description'],
+                  event_data['location'], event_data['start'],
+                  event_data['end'], event_data['all_day'],
+                  calendar.id, uid))
+            
+            # If no rows were affected, insert new event
+            if cursor.rowcount == 0:
+                cursor.execute('''
+                    INSERT INTO events (calendar_id, uid, title, description, location,
+                                       start_datetime, end_datetime, all_day)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (calendar.id, uid, event_data['summary'],
+                      event_data['description'], event_data['location'],
+                      event_data['start'], event_data['end'], event_data['all_day']))
+        
+        # Delete events that no longer exist in the calendar
+        deleted_uids = existing_uids - updated_uids
+        if deleted_uids:
+            placeholders = ','.join('?' * len(deleted_uids))
+            cursor.execute(f'''
+                DELETE FROM events
+                WHERE calendar_id = ? AND uid IN ({placeholders})
+            ''', (calendar.id, *deleted_uids))
         
         conn.commit()
         conn.close()
@@ -50,7 +79,7 @@ def sync_calendar(calendar: Calendar) -> bool:
         # Update sync metadata
         update_calendar_sync(calendar.id, content_hash)
         
-        logger.info(f"Synced calendar {calendar.id}: {len(events)} events")
+        logger.info(f"Synced calendar {calendar.id}: {len(events)} events, {len(deleted_uids)} deleted")
         return True
         
     except Exception as e:

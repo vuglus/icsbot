@@ -92,6 +92,7 @@ def run_all_migrations():
         from migrations import add_calendar_timezone
         from migrations import enforce_calendar_unique_constraint
         from migrations import m20260201_unique_event
+        from migrations import m202602021223_event_fix_calendsar
         
         
         # Run migrations in order
@@ -100,6 +101,8 @@ def run_all_migrations():
         run_migration("add_calendar_timezone", add_calendar_timezone.run)
         run_migration("enforce_calendar_unique_constraint", enforce_calendar_unique_constraint.run)
         run_migration("migrations/m20260201_unique_event", m20260201_unique_event.run)
+        run_migration("m20260201_unique_event", m20260201_unique_event.run)
+        run_migration("m202602021223_event_fix_calendsar", m202602021223_event_fix_calendsar.run)
         
         logger.info("All migrations completed")
     except Exception as e:
