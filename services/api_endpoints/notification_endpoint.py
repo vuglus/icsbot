@@ -1,0 +1,45 @@
+import logging
+from flask import request, jsonify
+from services.config_service import get_api_key
+from services.notification_service import mark_notification_delivered
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+def validate_api_key() -> bool:
+    """Validate API key from request"""
+    # Check header first
+    api_key = request.headers.get('X-API-Key')
+    
+    # Check query parameter if header not found
+    if not api_key:
+        api_key = request.args.get('api_key')
+    
+    # Validate against environment variable or config
+    expected_key = get_api_key()
+    
+    return api_key == expected_key
+
+def register_notification_endpoint(app):
+    """Register notification delivered endpoint"""
+    
+    @app.route('/notifications/<int:event_id>/delivered', methods=['POST'])
+    def mark_notification_delivered_api(event_id):
+        """Mark notification as delivered"""
+        if not validate_api_key():
+            return jsonify({'error': {'code': 401, 'message': 'Unauthorized'}}), 401
+        
+        try:
+            success = mark_notification_delivered(event_id)
+            
+            if success:
+                return jsonify({
+                    'status': 'success',
+                    'message': 'Notification marked as delivered',
+                    'event_id': event_id
+                })
+            else:
+                return jsonify({'error': {'code': 404, 'message': 'Event not found'}}), 404
+        except Exception as e:
+            logger.error(f"Error marking notification as delivered: {e}")
+            return jsonify({'error': {'code': 500, 'message': 'Internal Server Error'}}), 500
