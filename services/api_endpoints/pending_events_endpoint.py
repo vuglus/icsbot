@@ -1,8 +1,11 @@
 import logging
 from flask import request, jsonify
+from flask_apispec import doc, use_kwargs
+from marshmallow import Schema, fields
 from dateutil import tz
 from services.config_service import get_api_key
 from services.notification_service import get_pending_events_for_api
+from services.api_utils import validate_api_key
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -33,33 +36,68 @@ def convert_datetime_to_timezone(dt_string, timezone_name):
         logger.warning(f"Error converting datetime {dt_string} to timezone {timezone_name}: {e}")
         return dt_string  # Return original if conversion fails
 
-def validate_api_key() -> bool:
-    """Validate API key from request"""
-    # Check header first
-    api_key = request.headers.get('X-API-Key')
-    
-    # Check query parameter if header not found
-    if not api_key:
-        api_key = request.args.get('api_key')
-    
-    # Validate against environment variable or config
-    expected_key = get_api_key()
-    
-    return api_key == expected_key
-
 def register_pending_events_endpoint(app):
     """Register pending events endpoint"""
     
+    # Define schema for query parameters
+    class PendingEventsSchema(Schema):
+        user_id = fields.Str(required=False, description="Filter events by user ID")
+    
     @app.route('/events/pending')
-    def get_events_pending():
+    @use_kwargs(PendingEventsSchema, location="query")
+    @doc(
+        summary="Get pending events",
+        description="Returns a list of events that are ready for notification",
+        security=[{"ApiKeyAuth": []}],
+        parameters=[
+            {
+                "in": "query",
+                "name": "user_id",
+                "required": False,
+                "schema": {"type": "string"},
+                "description": "Filter events by user ID"
+            }
+        ],
+        responses={
+            200: {
+                "description": "List of pending events",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "events": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "id": {"type": "integer"},
+                                            "uid": {"type": "string"},
+                                            "user_id": {"type": "integer"},
+                                            "title": {"type": "string"},
+                                            "description": {"type": "string"},
+                                            "location": {"type": "string"},
+                                            "start_datetime": {"type": "string", "format": "date-time"},
+                                            "end_datetime": {"type": "string", "format": "date-time"},
+                                            "all_day": {"type": "boolean"},
+                                            "calendar_timezone": {"type": "string"}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+            },
+            401: {"description": "Unauthorized"}
+        }
+    )
+    def get_events_pending(user_id=None):
         """Get pending events"""
         if not validate_api_key():
             return jsonify({'error': {'code': 401, 'message': 'Unauthorized'}}), 401
         
         try:
-            # Get user_id from query parameters (optional)
-            user_id = request.args.get('user_id')
-            
             pending_events = get_pending_events_for_api(user_id)
             
             events_data = []
@@ -88,3 +126,6 @@ def register_pending_events_endpoint(app):
         except Exception as e:
             logger.error(f"Error getting pending events: {e}")
             return jsonify({'error': {'code': 500, 'message': 'Internal Server Error'}}), 500
+    
+    # Return the view function so it can be registered with flask-apispec
+    return [get_events_pending]

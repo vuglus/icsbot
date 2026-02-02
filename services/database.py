@@ -129,18 +129,56 @@ def create_calendar(user_id: int, url: str) -> Calendar:
     
     return calendar
 
-def get_calendars() -> List[Calendar]:
-    """Get all calendars"""
+def get_calendars(user_id: str = None) -> List[Calendar]:
+    """Get all calendars, optionally filtered by user_id"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    cursor.execute('SELECT * FROM calendars')
+    if user_id:
+        # First get the user's internal ID
+        cursor.execute('SELECT id FROM users WHERE user_id = ?', (user_id,))
+        user_row = cursor.fetchone()
+        if not user_row:
+            conn.close()
+            raise ValueError(f"User {user_id} not found")
+        user_internal_id = user_row['id']
+        
+        cursor.execute('SELECT * FROM calendars WHERE user_id = ?', (user_internal_id,))
+    else:
+        cursor.execute('SELECT * FROM calendars')
+    
     rows = cursor.fetchall()
     conn.close()
     
     return [Calendar(row['id'], row['user_id'], row['url'],
-                     row['last_sync_at'], row['sync_hash'],
-                     row['timezone'] if 'timezone' in row.keys() else 'GMT+3') for row in rows]
+                 row['last_sync_at'], row['sync_hash'],
+                 row['timezone'] if 'timezone' in row.keys() else 'GMT+3') for row in rows]
+
+def delete_calendar(calendar_id: int, user_id: str = None) -> bool:
+    """Delete a calendar by ID, optionally checking user ownership"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    if user_id:
+        # First get the user's internal ID
+        cursor.execute('SELECT id FROM users WHERE user_id = ?', (user_id,))
+        user_row = cursor.fetchone()
+        if not user_row:
+            conn.close()
+            raise ValueError(f"User {user_id} not found")
+        user_internal_id = user_row['id']
+        
+        # Delete only if the calendar belongs to this user
+        cursor.execute('DELETE FROM calendars WHERE id = ? AND user_id = ?', (calendar_id, user_internal_id))
+    else:
+        # Delete any calendar (admin access)
+        cursor.execute('DELETE FROM calendars WHERE id = ?', (calendar_id,))
+    
+    deleted = cursor.rowcount > 0
+    conn.commit()
+    conn.close()
+    
+    return deleted
 
 def get_calendar_by_id(calendar_id: int) -> Calendar:
     """Get a specific calendar by ID"""

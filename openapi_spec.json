@@ -1,0 +1,312 @@
+{
+  "paths": {
+    "/health": {
+      "options": {
+        "responses": {},
+        "parameters": []
+      },
+      "get": {
+        "responses": {},
+        "parameters": []
+      }
+    },
+    "/events/pending": {
+      "options": {
+        "responses": {
+          "200": {
+            "description": "List of pending events"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "summary": "Get pending events",
+        "description": "Returns a list of events that are ready for notification",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "description": "Filter events by user ID",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      },
+      "get": {
+        "responses": {
+          "200": {
+            "description": "List of pending events"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "summary": "Get pending events",
+        "description": "Returns a list of events that are ready for notification",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "description": "Filter events by user ID",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/notifications/{event_id}/delivered": {
+      "options": {
+        "responses": {
+          "200": {
+            "description": "Notification marked as delivered"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Event not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Mark notification as delivered",
+        "description": "Marks a notification as delivered",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Notification marked as delivered"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Event not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Mark notification as delivered",
+        "description": "Marks a notification as delivered",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/calendars": {
+      "options": {
+        "responses": {
+          "200": {
+            "description": "List of calendars"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "summary": "List calendars",
+        "description": "Returns a list of calendars, optionally filtered by user ID",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "description": "Filter calendars by user ID",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      },
+      "post": {
+        "responses": {
+          "400": {
+            "description": "Bad request"
+          },
+          "201": {
+            "description": "Calendar created successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "user_id",
+                  "url"
+                ],
+                "properties": {
+                  "url": {
+                    "description": "Calendar URL",
+                    "type": "string"
+                  },
+                  "user_id": {
+                    "description": "User ID",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "summary": "Create calendar",
+        "description": "Creates a new calendar for a user",
+        "parameters": [],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      },
+      "get": {
+        "responses": {
+          "200": {
+            "description": "List of calendars"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "summary": "List calendars",
+        "description": "Returns a list of calendars, optionally filtered by user ID",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "description": "Filter calendars by user ID",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/calendars/{calendar_id}": {
+      "options": {
+        "responses": {
+          "200": {
+            "description": "Calendar deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Calendar not found"
+          }
+        },
+        "summary": "Delete calendar",
+        "description": "Deletes a calendar by ID, optionally checking user ownership",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "calendar_id",
+            "required": true,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "responses": {
+          "200": {
+            "description": "Calendar deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Calendar not found"
+          }
+        },
+        "summary": "Delete calendar",
+        "description": "Deletes a calendar by ID, optionally checking user ownership",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "calendar_id",
+            "required": true,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "ICS-Gate API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.0.0"
+}

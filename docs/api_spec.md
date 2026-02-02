@@ -144,6 +144,100 @@ X-API-Key: your-api-key
   "url": "https://example.com/calendar.ics"
 }
 ```
+
+### List Calendars
+```
+GET /calendars
+```
+
+#### Description
+Returns a list of calendars. When the `user_id` parameter is provided, only calendars belonging to that user will be returned.
+
+#### Parameters
+- `user_id` (optional): Filter calendars by user ID.
+
+#### Response
+```json
+{
+  "calendars": [
+    {
+      "id": 123,
+      "user_id": 1,
+      "url": "https://example.com/calendar.ics",
+      "timezone": "GMT+3",
+      "last_sync_at": "2023-06-15T09:30:00Z",
+      "sync_hash": "abc123"
+    }
+  ]
+}
+```
+
+#### Response Codes
+- 200: Success
+- 401: Unauthorized
+- 500: Internal server error
+
+#### Example Usage
+```
+GET /calendars?user_id=user123
+```
+
+### Delete Calendar
+```
+DELETE /calendars/{id}
+```
+
+#### Description
+Deletes a calendar by ID. When the `user_id` parameter is provided, the operation will only succeed if the calendar belongs to the specified user.
+
+#### Parameters
+- Path parameter: `id` - The calendar ID
+- `user_id` (optional): User ID for ownership verification
+
+#### Response
+```json
+{
+  "status": "success",
+  "message": "Calendar deleted successfully"
+}
+```
+
+#### Response Codes
+- 200: Success
+- 401: Unauthorized
+- 403: Forbidden (user does not own the calendar)
+- 404: Calendar not found
+- 500: Internal server error
+
+#### Example Usage
+```
+DELETE /calendars/123?user_id=user123
+```
+
+### OpenAPI Specification
+```
+GET /openapi.json
+```
+
+#### Description
+Returns the OpenAPI specification for the API in JSON format.
+
+#### Response
+```json
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "ICS-Gate API",
+    "description": "API for managing ICS calendars and receiving event notifications",
+    "version": "1.0.0"
+  },
+  // ... full OpenAPI specification
+}
+```
+
+#### Response Codes
+- 200: Success
+
 ## Data Models
 
 ### Event

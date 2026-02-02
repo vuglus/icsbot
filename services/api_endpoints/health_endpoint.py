@@ -16,3 +16,6 @@ def register_health_endpoint(app):
             'timestamp': datetime.now().isoformat(),
             'version': '1.0.0'
         })
+    
+    # Return the view function so it can be registered with flask-apispec
+    return [health_check]
