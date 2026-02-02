@@ -6,76 +6,37 @@ import json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from services.api_service import get_app
-from services.api_endpoints.health_endpoint import register_health_endpoint
-from services.api_endpoints.pending_events_endpoint import register_pending_events_endpoint
-from services.api_endpoints.notification_endpoint import register_notification_endpoint
-from services.api_endpoints.calendar_endpoint import register_calendar_endpoint
-from services.api_endpoints.openapi_endpoint import register_openapi_endpoint
-from flask_apispec import FlaskApiSpec
-from apispec import APISpec
-from apispec.ext.marshmallow import MarshmallowPlugin
+from services.api_endpoints import get_endpoints
+from flask_smorest import Api
 
 def test_apispec_generation():
-    print("Testing OpenAPI spec generation...")
+    print("Testing OpenAPI spec generation with flask-smorest...")
     
     # Get the Flask app
     app = get_app()
     
-    # Initialize FlaskApiSpec
-    app.config.update({
-        'APISPEC_SPEC': APISpec(
-            title='ICS-Gate API',
-            version='1.0.0',
-            openapi_version='3.0.0',
-            plugins=[MarshmallowPlugin()],
-        ),
-        'APISPEC_SWAGGER_URL': '/swagger/',
-        'APISPEC_SWAGGER_UI_URL': '/swagger-ui/'
-    })
+    # Configure Flask-Smorest API
+    app.config["API_TITLE"] = "ICS Bot API"
+    app.config["API_VERSION"] = "v1"
+    app.config["OPENAPI_VERSION"] = "3.0.2"
+    app.config["OPENAPI_URL_PREFIX"] = "/api"
+    app.config["OPENAPI_REDOC_PATH"] = "/redoc"
+    app.config["OPENAPI_SWAGGER_UI_PATH"] = "/swagger-ui"
+    app.config["OPENAPI_SWAGGER_UI_URL"] = "https://cdn.jsdelivr.net/npm/swagger-ui-dist/"
     
-    docs = FlaskApiSpec(app)
+    # Initialize Flask-Smorest API
+    api = Api(app)
     
-    # Register all endpoints and collect view functions
+    # Register all endpoints
     print("Registering endpoints...")
-    view_functions = []
+    blueprints = get_endpoints()
     
-    # Register health endpoint
-    health_funcs = register_health_endpoint(app) or []
-    view_functions.extend(health_funcs)
-    print(f"Registered health endpoint with {len(health_funcs)} functions")
+    # Register blueprints with the API
+    for name, blueprint in blueprints.items():
+        if hasattr(blueprint, 'name') and blueprint.name:
+            api.register_blueprint(blueprint)
     
-    # Register pending events endpoint
-    pending_funcs = register_pending_events_endpoint(app) or []
-    view_functions.extend(pending_funcs)
-    print(f"Registered pending events endpoint with {len(pending_funcs)} functions")
-    
-    # Register notification endpoint
-    notification_funcs = register_notification_endpoint(app) or []
-    view_functions.extend(notification_funcs)
-    print(f"Registered notification endpoint with {len(notification_funcs)} functions")
-    
-    # Register calendar endpoint
-    calendar_funcs = register_calendar_endpoint(app) or []
-    view_functions.extend(calendar_funcs)
-    print(f"Registered calendar endpoint with {len(calendar_funcs)} functions")
-    
-    # Register openapi endpoint (doesn't need to be registered with flask-apispec)
-    register_openapi_endpoint(app)
-    print("Registered openapi endpoint")
-    
-    print(f"Total view functions to register with flask-apispec: {len(view_functions)}")
-    
-    # Register view functions with flask-apispec
-    registered_count = 0
-    for view_func in view_functions:
-        try:
-            print(f"Registering {view_func.__name__} with flask-apispec")
-            docs.register(view_func)
-            registered_count += 1
-        except Exception as e:
-            print(f"Could not register {view_func.__name__} with FlaskApiSpec: {e}")
-    
-    print(f"Successfully registered {registered_count} functions with flask-apispec")
+    print(f"Registered {len(blueprints)} blueprints with flask-smorest")
     
     # Check what's in the app's url map
     print("\nApp URL map:")
@@ -87,12 +48,12 @@ def test_apispec_generation():
     for endpoint, view_func in app.view_functions.items():
         print(f"  {endpoint} -> {view_func.__name__ if hasattr(view_func, '__name__') else view_func}")
     
-    # Try to access the spec through the docs object
+    # Try to access the spec through the API object
     try:
-        spec = docs.spec.to_dict()
-        print(f"\nOpenAPI spec generated successfully via docs.spec!")
+        spec = api.spec.to_dict()
+        print(f"\nOpenAPI spec generated successfully via api.spec!")
     except Exception as e:
-        print(f"Could not access spec via docs.spec: {e}")
+        print(f"Could not access spec via api.spec: {e}")
         raise
     
     print(f"Spec title: {spec.get('info', {}).get('title', 'Unknown')}")
@@ -116,7 +77,7 @@ def test_apispec_generation():
     print("\nOpenAPI spec saved to openapi_spec.json")
     
     # Print the calendar endpoints details
-    calendar_path = paths.get('/calendars', {})
+    calendar_path = paths.get('/api/v1/calendar/calendars', {})
     
     # POST endpoint
     calendar_post = calendar_path.get('post', {})

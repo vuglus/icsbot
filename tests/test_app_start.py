@@ -60,6 +60,7 @@ calendars:
                 process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 process.kill()
+                process.wait(timeout=5)  # Wait for kill to complete
         else:
             stdout, stderr = process.communicate()
             print(f"Application failed to start. Exit code: {process.returncode}")
@@ -69,10 +70,22 @@ calendars:
             
     finally:
         # Clean up temporary files
-        if os.path.exists(tmp_config_path):
-            os.unlink(tmp_config_path)
-        if os.path.exists(tmp_db_path):
-            os.unlink(tmp_db_path)
+        # Try multiple times in case of file locking issues
+        for _ in range(5):  # Try up to 5 times
+            try:
+                if os.path.exists(tmp_config_path):
+                    os.unlink(tmp_config_path)
+                if os.path.exists(tmp_db_path):
+                    os.unlink(tmp_db_path)
+                break  # Success, exit the loop
+            except PermissionError:
+                time.sleep(0.1)  # Wait a bit and try again
+            except FileNotFoundError:
+                # File already deleted, that's fine
+                break
+        else:
+            # If we couldn't delete the files after 5 tries, print a warning
+            print(f"Warning: Could not clean up temporary files {tmp_config_path}, {tmp_db_path}")
 
 if __name__ == '__main__':
     try:

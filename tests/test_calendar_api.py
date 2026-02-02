@@ -4,7 +4,8 @@ import tempfile
 import os
 from unittest.mock import patch
 from flask import Flask
-from services.api_service import get_app
+from flask_smorest import Api
+from services.api_service import get_app, initialize_api
 from services.database import init_db, set_db_path, create_user, create_calendar, get_calendars
 import sys
 
@@ -25,9 +26,23 @@ class TestCalendarAPI(unittest.TestCase):
         init_db()
         
         # Set up Flask app for testing
-        self.app = get_app()
-        self.app.config['TESTING'] = True
+        self.app = Flask(__name__)
+        self.app.config["TESTING"] = True
+        self.app.config["API_TITLE"] = "ICS Bot API"
+        self.app.config["API_VERSION"] = "v1"
+        self.app.config["OPENAPI_VERSION"] = "3.0.2"
+        
+        # Initialize API endpoints
+        api = Api(self.app)
+        initialize_api(api)
+        
+        # Create test client after full initialization
         self.client = self.app.test_client()
+        
+        # Print available endpoints for debugging
+        print(f"Test app has {len(self.app.view_functions)} view functions")
+        for endpoint, view_func in self.app.view_functions.items():
+            print(f"  {endpoint} -> {view_func}")
         
     def tearDown(self):
         """Tear down test environment"""
@@ -130,10 +145,10 @@ class TestCalendarAPI(unittest.TestCase):
         )
         
         # Check response
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 422)
         data = json.loads(response.data)
-        self.assertIn('error', data)
-        self.assertEqual(data['error']['code'], 400)
+        self.assertIn('errors', data)
+        self.assertEqual(data['code'], 422)
         
     def test_create_calendar_unauthorized(self):
         """Test creating calendar without valid API key"""

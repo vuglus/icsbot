@@ -1,178 +1,30 @@
 {
   "paths": {
     "/health": {
-      "options": {
-        "responses": {},
-        "parameters": []
-      },
-      "get": {
-        "responses": {},
-        "parameters": []
-      }
-    },
-    "/events/pending": {
-      "options": {
-        "responses": {
-          "200": {
-            "description": "List of pending events"
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        },
-        "summary": "Get pending events",
-        "description": "Returns a list of events that are ready for notification",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "user_id",
-            "description": "Filter events by user ID",
-            "schema": {
-              "type": "string"
-            },
-            "required": false
-          }
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ]
-      },
       "get": {
         "responses": {
-          "200": {
-            "description": "List of pending events"
-          },
-          "401": {
-            "description": "Unauthorized"
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
           }
         },
-        "summary": "Get pending events",
-        "description": "Returns a list of events that are ready for notification",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "user_id",
-            "description": "Filter events by user ID",
-            "schema": {
-              "type": "string"
-            },
-            "required": false
-          }
+        "summary": "Health check",
+        "tags": [
+          "health"
         ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ]
-      }
-    },
-    "/notifications/{event_id}/delivered": {
-      "options": {
-        "responses": {
-          "200": {
-            "description": "Notification marked as delivered"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Event not found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "summary": "Mark notification as delivered",
-        "description": "Marks a notification as delivered",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "event_id",
-            "required": true,
-            "type": "integer",
-            "format": "int32"
-          }
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ]
-      },
-      "post": {
-        "responses": {
-          "200": {
-            "description": "Notification marked as delivered"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Event not found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "summary": "Mark notification as delivered",
-        "description": "Marks a notification as delivered",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "event_id",
-            "required": true,
-            "type": "integer",
-            "format": "int32"
-          }
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ]
+        "description": "Returns the health status of the application"
       }
     },
     "/calendars": {
-      "options": {
-        "responses": {
-          "200": {
-            "description": "List of calendars"
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        },
-        "summary": "List calendars",
-        "description": "Returns a list of calendars, optionally filtered by user ID",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "user_id",
-            "description": "Filter calendars by user ID",
-            "schema": {
-              "type": "string"
-            },
-            "required": false
-          }
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ]
-      },
       "post": {
         "responses": {
-          "400": {
-            "description": "Bad request"
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_ENTITY"
           },
           "201": {
             "description": "Calendar created successfully"
           },
-          "401": {
-            "description": "Unauthorized"
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
           }
         },
         "requestBody": {
@@ -180,28 +32,16 @@
           "content": {
             "application/json": {
               "schema": {
-                "required": [
-                  "user_id",
-                  "url"
-                ],
-                "properties": {
-                  "url": {
-                    "description": "Calendar URL",
-                    "type": "string"
-                  },
-                  "user_id": {
-                    "description": "User ID",
-                    "type": "string"
-                  }
-                },
-                "type": "object"
+                "$ref": "#/components/schemas/CreateCalendar"
               }
             }
           }
         },
         "summary": "Create calendar",
+        "tags": [
+          "calendars"
+        ],
         "description": "Creates a new calendar for a user",
-        "parameters": [],
         "security": [
           {
             "ApiKeyAuth": []
@@ -209,16 +49,6 @@
         ]
       },
       "get": {
-        "responses": {
-          "200": {
-            "description": "List of calendars"
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        },
-        "summary": "List calendars",
-        "description": "Returns a list of calendars, optionally filtered by user ID",
         "parameters": [
           {
             "in": "query",
@@ -230,6 +60,19 @@
             "required": false
           }
         ],
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_ENTITY"
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "List calendars",
+        "tags": [
+          "calendars"
+        ],
+        "description": "Returns a list of calendars, optionally filtered by user ID",
         "security": [
           {
             "ApiKeyAuth": []
@@ -238,75 +81,232 @@
       }
     },
     "/calendars/{calendar_id}": {
-      "options": {
+      "delete": {
         "responses": {
-          "200": {
-            "description": "Calendar deleted successfully"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Calendar not found"
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
           }
         },
         "summary": "Delete calendar",
-        "description": "Deletes a calendar by ID, optionally checking user ownership",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "calendar_id",
-            "required": true,
-            "type": "integer",
-            "format": "int32"
-          }
+        "tags": [
+          "calendars"
         ],
+        "description": "Deletes a calendar by ID, optionally checking user ownership",
         "security": [
           {
             "ApiKeyAuth": []
           }
         ]
       },
-      "delete": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "calendar_id",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      ]
+    },
+    "/notifications/{event_id}/delivered": {
+      "post": {
         "responses": {
-          "200": {
-            "description": "Calendar deleted successfully"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Calendar not found"
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
           }
         },
-        "summary": "Delete calendar",
-        "description": "Deletes a calendar by ID, optionally checking user ownership",
+        "summary": "Mark notification as delivered",
+        "tags": [
+          "notifications"
+        ],
+        "description": "Marks a notification as delivered",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "event_id",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      ]
+    },
+    "/events/pending": {
+      "get": {
         "parameters": [
           {
-            "in": "path",
-            "name": "calendar_id",
-            "required": true,
-            "type": "integer",
-            "format": "int32"
+            "in": "query",
+            "name": "user_id",
+            "description": "Filter events by user ID",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
           }
         ],
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_ENTITY"
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Get pending events",
+        "tags": [
+          "events"
+        ],
+        "description": "Returns a list of events that are ready for notification",
         "security": [
           {
             "ApiKeyAuth": []
           }
         ]
       }
+    },
+    "/openapi/.json": {
+      "get": {
+        "responses": {
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "summary": "Get OpenAPI specification",
+        "tags": [
+          "openapi"
+        ],
+        "description": "Returns the OpenAPI specification for the API"
+      }
     }
   },
   "info": {
-    "title": "ICS-Gate API",
-    "version": "1.0.0"
+    "title": "ICS Bot API",
+    "version": "v1"
   },
-  "openapi": "3.0.0"
+  "tags": [
+    {
+      "name": "health",
+      "description": ""
+    },
+    {
+      "name": "calendars",
+      "description": ""
+    },
+    {
+      "name": "notifications",
+      "description": ""
+    },
+    {
+      "name": "events",
+      "description": ""
+    },
+    {
+      "name": "openapi",
+      "description": ""
+    }
+  ],
+  "openapi": "3.0.2",
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "Error code"
+          },
+          "status": {
+            "type": "string",
+            "description": "Error name"
+          },
+          "message": {
+            "type": "string",
+            "description": "Error message"
+          },
+          "errors": {
+            "type": "object",
+            "description": "Errors",
+            "additionalProperties": {}
+          }
+        },
+        "additionalProperties": false
+      },
+      "PaginationMetadata": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "total_pages": {
+            "type": "integer"
+          },
+          "first_page": {
+            "type": "integer"
+          },
+          "last_page": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "previous_page": {
+            "type": "integer"
+          },
+          "next_page": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateCalendar": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "User ID"
+          },
+          "url": {
+            "type": "string",
+            "description": "Calendar URL"
+          }
+        },
+        "required": [
+          "url",
+          "user_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "responses": {
+      "DEFAULT_ERROR": {
+        "description": "Default error response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "UNPROCESSABLE_ENTITY": {
+        "description": "Unprocessable Entity",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    }
+  }
 }

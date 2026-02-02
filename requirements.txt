@@ -1,5 +1,6 @@
-Flask>=2.0.0
-flask-apispec>=0.11.0
+Flask==3.1.2
+flask-smorest==0.46.2
+marshmallow==4.2.1
 icalendar>=4.0.0
 requests>=2.25.0
 PyYAML>=5.4.0
