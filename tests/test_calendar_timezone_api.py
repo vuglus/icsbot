@@ -2,6 +2,9 @@ import unittest
 import tempfile
 import os
 import json
+from flask import Flask
+from flask_smorest import Api
+from services.api_service import get_app, initialize_api
 from services.database import init_db, create_user, create_calendar, create_event
 from services.database import set_db_path
 from services.api_service import get_app
@@ -18,7 +21,8 @@ class TestCalendarTimezoneAPI(unittest.TestCase):
         
         # Initialize the database
         init_db()
-        
+
+                
         # Create a test user
         self.user = create_user("test_user")
         
@@ -43,8 +47,17 @@ class TestCalendarTimezoneAPI(unittest.TestCase):
             all_day=False
         )
         
+        # Set up Flask app for testing
+        self.app = Flask(__name__)
+        self.app.config["TESTING"] = True
+        self.app.config["API_TITLE"] = "ICS Bot API"
+        self.app.config["API_VERSION"] = "v1"
+        self.app.config["OPENAPI_VERSION"] = "3.0.2"        
+        # Initialize API endpoints
+        api = Api(self.app)
+        initialize_api(api)
+
         # Create Flask test client
-        self.app = get_app()
         self.client = self.app.test_client()
         
     def tearDown(self):
@@ -54,7 +67,7 @@ class TestCalendarTimezoneAPI(unittest.TestCase):
     def test_get_events_pending_includes_timezone(self):
         """Test that the /events/pending endpoint includes timezone information"""
         # Make a request to the API with API key
-        response = self.client.get('/events/pending', headers={'X-API-Key': 'test-api-key'})
+        response = self.client.get(f"/events/pending?user_id={self.user.user_id}", headers={'X-API-Key': 'test-api-key'})
         
         # Check that the response is successful
         self.assertEqual(response.status_code, 200)

@@ -15,7 +15,10 @@ def load_config() -> Dict:
         with open(CONFIG_PATH, 'r') as f:
             config = yaml.safe_load(f)
         logger.info(f"Loaded configuration from {CONFIG_PATH}")
-        return config
+        return config or {}  # Return empty dict if config is None
+    except FileNotFoundError:
+        logger.info(f"Configuration file {CONFIG_PATH} not found, using defaults")
+        return {}
     except Exception as e:
         logger.error(f"Error loading configuration: {e}")
         return {}
