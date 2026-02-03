@@ -94,8 +94,6 @@ def test_apispec_generation():
     print(f"  Description: {calendar_get.get('description', 'N/A')}")
     print(f"  Parameters: {calendar_get.get('parameters', 'N/A')}")
     
-    return spec
-
 if __name__ == "__main__":
     try:
         spec = test_apispec_generation()
