@@ -2,6 +2,7 @@ import unittest
 import tempfile
 import os
 import json
+from datetime import datetime, timezone, timedelta
 from flask import Flask
 from flask_smorest import Api
 from services.api_service import get_app, initialize_api
@@ -28,13 +29,11 @@ class TestCalendarTimezoneAPI(unittest.TestCase):
         
         # Create a calendar with timezone
         self.calendar = create_calendar(self.user.id, "https://example.com/calendar.ics")
-        
-        # Create a test event in the future within notification window
-        from datetime import datetime, timedelta
         # Create an event for 1 hour from now
-        future_time = datetime.now() + timedelta(hours=1)
+
+        future_time = datetime.now(timezone.utc) + timedelta(hours=1)
         start_time = future_time.replace(second=0, microsecond=0)
-        end_time = (future_time + timedelta(hours=10)).replace(second=0, microsecond=0)
+        end_time = (future_time + timedelta(hours=1)).replace(second=0, microsecond=0)
         
         self.event = create_event(
             calendar_id=self.calendar.id,
@@ -42,8 +41,8 @@ class TestCalendarTimezoneAPI(unittest.TestCase):
             title="Test Event",
             description="Test event description",
             location="Test Location",
-            start_datetime=start_time.isoformat() + "+03:00",
-            end_datetime=end_time.isoformat() + "+03:00",
+            start_datetime=start_time.isoformat(),
+            end_datetime=end_time.isoformat(),
             all_day=False
         )
         
