@@ -1,5 +1,4 @@
 import logging
-import os
 from datetime import datetime
 from .database import get_pending_events, mark_event_notified
 

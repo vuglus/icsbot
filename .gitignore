@@ -5,3 +5,5 @@ icsgate.db
 test.db
 .codeassistant
 .pytest_cache
+config/
+data/

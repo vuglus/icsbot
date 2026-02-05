@@ -13,8 +13,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Global variables
-DB_PATH = os.environ.get('DB_PATH', 'icsgate.db')
-CONFIG_PATH = os.environ.get('CONFIG_PATH', 'config.yml')
+DB_PATH = os.environ.get('DB_PATH', './data/icsgate.db')
+CONFIG_PATH = os.environ.get('CONFIG_PATH', './config/config.yml')
 SYNC_INTERVAL_MINUTES = int(os.environ.get('SYNC_INTERVAL_MINUTES', 15))
 NOTIFY_INTERVAL_SECONDS = int(os.environ.get('NOTIFY_INTERVAL_SECONDS', 60))
 

@@ -1,0 +1,34 @@
+on:
+  push:
+    - workflows: [ci-workflow]
+      filter:
+        branches: [master]
+  pull_request:
+    - workflows: [ci-workflow]
+
+workflows:
+  ci-workflow:
+    tasks:
+      - name: ci-task
+        cubes:
+          - name: setup-and-test
+            image: docker.io/library/python:3.11
+            script:
+              - pip install --upgrade pip
+              - pip install -r requirements.txt
+              - python -c "import flask, requests; print('Imports OK')"
+              - pytest -q
+          
+          - name: docker-build
+            image: docker.io/library/docker:latest
+            script:
+              - docker build -t icsbot:ci .
+              - docker save icsbot:ci | gzip > icsbot.tar.gz
+            artifacts:
+              - icsbot.tar.gz
+          
+          - name: deploy
+            image: docker.io/library/alpine:latest
+            script:
+              - echo "Deployment steps would go here"
+              # Note: SSH deployment would require service connections in SourceCraft
