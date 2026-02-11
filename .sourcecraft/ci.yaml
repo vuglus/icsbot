@@ -6,11 +6,34 @@ on:
   pull_request:
     - workflows: [ci-workflow]
 
+tokens:
+  SERVICE_CONNECTION:
+    service_connection: services
+    scope: org
+
 workflows:
   ci-workflow:
     tasks:
     - name: ci-task
       cubes:
+        - name: get-iam-token
+          env:
+            ID_TOKEN: ${{ tokens.SERVICE_CONNECTION.id_token }}
+            YC_SA_ID: ${{ tokens.SERVICE_CONNECTION.service_account_id }}
+          image: cr.yandex/sourcecraft/yc-iam:latest
+        
+        # Пример использования с Yandex Cloud CLI
+        - name: yc-cli-demo
+          env:  
+            YC_FOLDER_ID: ${{ tokens.SERVICE_CONNECTION.folder_id }}
+            YC_IAM_TOKEN: ${{ cubes.get-iam-token.outputs.IAM_TOKEN }}
+          image: 
+            name: cr.yandex/sourcecraft/yc-cli:latest
+            entrypoint: ""
+          script:
+            - |
+              yc config set folder-id $YC_FOLDER_ID
+              yc serverless function list
         - name: setup-and-test
           image: docker.io/library/python:3.11
           script:
