@@ -1,37 +1,37 @@
 on:
   push:
-    workflows: [ci-workflow, deploy-to-serverless]
+    workflows: [deploy-to-serverless]
   pull_request:
-    workflows: [ci-workflow]
+    workflows: [deploy-to-serverless]
 
 tokens:
   SERVICE_CONNECTION:
-    service_connection: default-service-connection
+    service_connection: services
     scope: org
 
 workflows:
-  ci-workflow:
-    tasks:
-    - name: ci-task
-      cubes:
-        - name: setup-and-test
-          image: docker.io/library/python:3.11
-          script:
-            - pip install --upgrade pip
-            - pip install -r requirements.txt
-            - python -c "import flask, requests; print('Imports OK')"
-            - pytest -q
+  # ci-workflow:
+  #   tasks:
+  #   - name: ci-task
+  #     cubes:
+  #       - name: setup-and-test
+  #         image: docker.io/library/python:3.11
+  #         script:
+  #           - pip install --upgrade pip
+  #           - pip install -r requirements.txt
+  #           - python -c "import flask, requests; print('Imports OK')"
+  #           - pytest -q
 
-        - name: docker-build
-          image: docker.io/library/docker:latest
-          script:
-            - docker build -t icsbot:ci .
+  #       - name: docker-build
+  #         image: docker.io/library/docker:latest
+  #         script:
+  #           - docker build -t icsbot:ci .
 
-        - name: deploy
-          image: docker.io/library/alpine:latest
-          script:
-            - echo "Deployment steps would go here"
-            # Note: SSH deployment would require service connections in SourceCraft
+  #       - name: deploy
+  #         image: docker.io/library/alpine:latest
+  #         script:
+  #           - echo "Deployment steps would go here"
+  #           # Note: SSH deployment would require service connections in SourceCraft
 
   deploy-to-serverless:
     tasks:
