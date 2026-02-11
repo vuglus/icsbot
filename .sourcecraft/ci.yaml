@@ -44,7 +44,7 @@ workflows:
               file: Dockerfile
               platforms: linux/amd64
               tags: |
-                ${{env.YC_DOCKER_REGISTRY_URI}}/$IMAGE_NAME:latest
+                cr.yandex/crpnegsi3mo0h8rm5k1p/icsbot-image:latest
               push: true
       
           # Example of usage with Yandex Cloud CLI
