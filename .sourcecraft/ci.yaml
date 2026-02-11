@@ -8,7 +8,7 @@ on:
 
 tokens:
   SERVICE_CONNECTION:
-    service_connection: services
+    service_connection: default-service-connection
     scope: org
 
 workflows:
@@ -16,24 +16,6 @@ workflows:
     tasks:
     - name: ci-task
       cubes:
-        - name: get-iam-token
-          env:
-            ID_TOKEN: ${{ tokens.SERVICE_CONNECTION.id_token }}
-            YC_SA_ID: ${{ tokens.SERVICE_CONNECTION.service_account_id }}
-          image: cr.yandex/sourcecraft/yc-iam:latest
-        
-        # Пример использования с Yandex Cloud CLI
-        - name: yc-cli-demo
-          env:  
-            YC_FOLDER_ID: ${{ tokens.SERVICE_CONNECTION.folder_id }}
-            YC_IAM_TOKEN: ${{ cubes.get-iam-token.outputs.IAM_TOKEN }}
-          image: 
-            name: cr.yandex/sourcecraft/yc-cli:latest
-            entrypoint: ""
-          script:
-            - |
-              yc config set folder-id $YC_FOLDER_ID
-              yc serverless function list
         - name: setup-and-test
           image: docker.io/library/python:3.11
           script:
@@ -55,3 +37,67 @@ workflows:
           script:
             - echo "Deployment steps would go here"
             # Note: SSH deployment would require service connections in SourceCraft
+
+  deploy-to-serverless:
+    tasks:
+      - name: deploy-task
+        env:
+          YC_DOCKER_REGISTRY_URI: cr.yandex/<YOUR_DOCKER_REGISTRY_ID>
+          IMAGE_NAME: icsbot-image
+          YC_SERVERLESS_CONTAINER_NAME: icsbot-container
+          YC_SERVICE_ACCOUNT_ID: ${{ tokens.SERVICE_CONNECTION.service_account_id }}
+        cubes:
+          # Return IAM-token through outputs.IAM_TOKEN
+          - name: get-iam-token
+            env:
+              ID_TOKEN: ${{ tokens.SERVICE_CONNECTION.id_token }}
+              YC_SA_ID: ${{ tokens.SERVICE_CONNECTION.service_account_id }}
+            image: cr.yandex/sourcecraft/yc-iam:latest
+
+          # Example of usage GitHub Actions
+          - name: setup-buildx
+            action: docker/setup-buildx-action@v3.11.1
+
+          - name: login
+            action: docker/login-action@v3.5.0
+            with:
+              registry: ${{env.YC_DOCKER_REGISTRY_URI}}
+              username: iam
+              password: ${{ cubes.get-iam-token.outputs.IAM_TOKEN }}
+
+          - name: build-and-push
+            action: docker/build-push-action@v6.18.0
+            with:
+              context: .
+              file: Dockerfile
+              platforms: linux/amd64
+              tags: |
+                ${{env.YC_DOCKER_REGISTRY_URI}}/$IMAGE_NAME:latest
+              push: true
+      
+          # Example of usage with Yandex Cloud CLI
+          - name: yc-cli-deploy
+            env:  
+              YC_FOLDER_ID: ${{ tokens.SERVICE_CONNECTION.folder_id }}
+              YC_IAM_TOKEN: ${{ cubes.get-iam-token.outputs.IAM_TOKEN }}
+            image: 
+              name: cr.yandex/sourcecraft/yc-cli:latest
+              entrypoint: ""
+            script:
+              - |
+                yc config set folder-id $YC_FOLDER_ID
+
+                # Check if the serverless container exists
+                if ! yc serverless container get --name $YC_SERVERLESS_CONTAINER_NAME &>/dev/null; then
+                    echo "Container $YC_SERVERLESS_CONTAINER_NAME does not exist. Creating it..."
+                    
+                    yc serverless container create --name $YC_SERVERLESS_CONTAINER_NAME \
+                                                  --folder-id $YC_FOLDER_ID \
+                                                  --description "ICS Bot Container created automatically"
+                    
+                    echo "Container $YC_SERVERLESS_CONTAINER_NAME created successfully"
+                else
+                    echo "Container $YC_SERVERLESS_CONTAINER_NAME already exists"
+                fi
+                
+                yc serverless container revision deploy --container-name $YC_SERVERLESS_CONTAINER_NAME --image $YC_DOCKER_REGISTRY_URI/$IMAGE_NAME:latest --service-account-id $YC_SERVICE_ACCOUNT_ID
