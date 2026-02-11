@@ -1,12 +1,8 @@
 on:
   push:
     - workflows: [ci-workflow, deploy-to-serverless]
-      filter:
-        branches: [master]
   pull_request:
     - workflows: [ci-workflow]
-      filter:
-        branches: [master]
 
 tokens:
   SERVICE_CONNECTION:
