@@ -1,8 +1,12 @@
 on:
   push:
-    workflows: [deploy-to-serverless]
+    - workflows: [test-only, deploy-to-serverless]
+      filter:
+        - branches: [ycloud]
   pull_request:
-    workflows: [deploy-to-serverless]
+    - workflows: [test-only]
+      filter:
+        - branches: [ycloud]
 
 tokens:
   SERVICE_CONNECTION:
@@ -10,6 +14,14 @@ tokens:
     scope: org
 
 workflows:
+  test-only:
+    tasks:
+      - name: setup-and-test
+        image: cr.yandex/mirror/library/python:3.13.2-slim
+        script:
+          - python -m pip install --upgrade pip
+          - if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          - pytest -q
   deploy-to-serverless:
     tasks:
       - name: deploy-task

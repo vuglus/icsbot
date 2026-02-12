@@ -12,8 +12,10 @@ NOTIFY_INTERVAL_SECONDS: 60
 # Notification time before event in minutes (default: 1440 = 24 hours)
 NOTIFY_BEFORE_MINUTES: 1440
 
-# Path to SQLite database
-DB_PATH: "/data/icsgate.db"
+# Database provider
+DB_PROVIDER: "ydb"
+# Path/uri of database
+DB_PATH: "grpcs://ydb.serverless.yandexcloud.net:..."
 
 # Default timezone
 TIMEZONE_DEFAULT: "UTC"
