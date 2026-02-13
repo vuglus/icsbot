@@ -2,12 +2,13 @@ import unittest
 import json
 import tempfile
 import os
-from unittest.mock import patch
 from flask import Flask
 from flask_smorest import Api
-from services.api_service import get_app, initialize_api
-from services.database import init_db, set_db_path, create_user, create_calendar, get_calendars
-import sys
+from services.api_service import initialize_api
+from services.api_utils import AuthService
+from services.database import init_db, set_db_path, CalendarEntity
+from services.config_service import Config
+
 
 class TestCalendarAPI(unittest.TestCase):
     """Test cases for calendar API endpoints"""
@@ -24,7 +25,10 @@ class TestCalendarAPI(unittest.TestCase):
         
         # Initialize database
         init_db()
-        
+        config = Config({
+            'api_key': 'test-api-key'
+        })
+        auth_service = self.AuthService(self.app, config)
         # Set up Flask app for testing
         self.app = Flask(__name__)
         self.app.config["TESTING"] = True
@@ -34,7 +38,7 @@ class TestCalendarAPI(unittest.TestCase):
         
         # Initialize API endpoints
         api = Api(self.app)
-        initialize_api(api)
+        initialize_api(api, auth_service, config)
         
         # Create test client after full initialization
         self.client = self.app.test_client()
@@ -105,7 +109,7 @@ class TestCalendarAPI(unittest.TestCase):
         self.assertEqual(data1['calendar']['id'], data2['calendar']['id'])
         
         # Check that only one calendar exists in database
-        calendars = get_calendars()
+        calendars = CalendarEntity.get_calendars()
         self.assertEqual(len(calendars), 1)
         
     def test_create_calendar_invalid_url(self):

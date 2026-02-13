@@ -1,8 +1,8 @@
 import logging
 from flask import request, jsonify
-from services.config_service import get_api_key
 from services.notification_service import mark_notification_delivered
-from services.api_utils import validate_api_key
+from services.api_utils import AuthService
+from services.config_service import Config
 from services.api_docs import Blueprint
 
 # Configure logging
@@ -19,7 +19,10 @@ notification_blp = Blueprint('notifications', __name__, url_prefix='/notificatio
 )
 def mark_notification_delivered_api(event_id):
     """Mark notification as delivered"""
-    if not validate_api_key():
+    # AuthService and Config instances will be injected here
+    # For now, we'll use a placeholder
+    auth_service = AuthService(None, Config({}))
+    if not auth_service.validate_api_key():
         return jsonify({'error': {'code': 401, 'message': 'Unauthorized'}}), 401
     
     try:

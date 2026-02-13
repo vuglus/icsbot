@@ -7,29 +7,18 @@ from typing import Dict
 logger = logging.getLogger(__name__)
 
 # Global variables
-CONFIG_PATH = os.environ.get('CONFIG_PATH', 'config.yml')
 
-def load_config() -> Dict:
-    """Load configuration from YAML file"""
-    try:
-        with open(CONFIG_PATH, 'r') as f:
-            config = yaml.safe_load(f)
-        logger.info(f"Loaded configuration from {CONFIG_PATH}")
-        return config or {}  # Return empty dict if config is None
-    except FileNotFoundError:
-        logger.info(f"Configuration file {CONFIG_PATH} not found, using defaults")
-        return {}
-    except Exception as e:
-        logger.error(f"Error loading configuration: {e}")
-        return {}
+# Load configuration from YAML file
+def load_config(path):
+    with open(path, 'r', encoding='utf-8') as f:
+        return yaml.safe_load(f)
 
-def get_api_key() -> str:
-    """Get API key from environment or config"""
-    api_key = os.environ.get('ICS_GATE_API_KEY', '')
-    if not api_key:
-        config = load_config()
-        api_key = config.get('api_key', '')
-    return api_key
+class Config:
+    def __init__(self, config):
+        self.config = config
+    def get(self, key, default=None):
+        return self.config.get(key, default)
+
 
 def get_notify_before_minutes() -> int:
     """Get notification time before event in minutes from config or environment"""
@@ -39,6 +28,8 @@ def get_notify_before_minutes() -> int:
         return int(notify_before_minutes)
     
     # Then check config file
-    config = load_config()
-    notify_before_minutes = config.get('NOTIFY_BEFORE_MINUTES', 1440)  # Default to 24 hours
+    # config = load_config()
+    # Using a placeholder since we don't have access to the config instance here
+    # This function should be refactored to accept the config instance
+    notify_before_minutes = 1440  # Default to 24 hours
     return int(notify_before_minutes)

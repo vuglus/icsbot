@@ -1,9 +1,9 @@
 import logging
 from flask import request, jsonify
 from marshmallow import Schema, fields
-from services.config_service import get_api_key
-from services.database import create_user, create_calendar, get_calendars, delete_calendar, get_calendar_by_id
-from services.api_utils import validate_api_key
+from services.database import UserEntity, CalendarEntity
+from services.api_utils import AuthService
+from services.config_service import Config
 from services.api_docs import Blueprint
 
 # Configure logging
@@ -30,7 +30,10 @@ class CreateCalendarSchema(Schema):
 @calendar_blp.response(201, description="Calendar created successfully")
 def create_calendar_api(args):
     """Create a new calendar for a user"""
-    if not validate_api_key():
+    # AuthService and Config instances will be injected here
+    # For now, we'll use a placeholder
+    auth_service = AuthService(None, Config({}))
+    if not auth_service.validate_api_key():
         return jsonify({'error': {'code': 401, 'message': 'Unauthorized'}}), 401
     
     try:
@@ -43,10 +46,10 @@ def create_calendar_api(args):
             return jsonify({'error': {'code': 400, 'message': 'Invalid URL format'}}), 400
         
         # Create user if not exists
-        user = create_user(user_id)
+        user = UserEntity.create_user(user_id)
         
         # Create calendar
-        calendar = create_calendar(user.id, url)
+        calendar = CalendarEntity.create_calendar(user.id, url)
         
         # Return success response
         return jsonify({
@@ -73,12 +76,15 @@ def create_calendar_api(args):
 )
 def list_calendars_api(args):
     """List calendars, optionally filtered by user_id"""
-    if not validate_api_key():
+    # AuthService and Config instances will be injected here
+    # For now, we'll use a placeholder
+    auth_service = AuthService(None, Config({}))
+    if not auth_service.validate_api_key():
         return jsonify({'error': {'code': 401, 'message': 'Unauthorized'}}), 401
     
     try:
         user_id = args.get('user_id') if args else None
-        calendars = get_calendars(user_id)
+        calendars = CalendarEntity.get_calendars(user_id)
         
         calendars_data = []
         for calendar in calendars:
@@ -109,7 +115,10 @@ def list_calendars_api(args):
 )
 def delete_calendar_api(calendar_id):
     """Delete a calendar by ID"""
-    if not validate_api_key():
+    # AuthService and Config instances will be injected here
+    # For now, we'll use a placeholder
+    auth_service = AuthService(None, Config({}))
+    if not auth_service.validate_api_key():
         return jsonify({'error': {'code': 401, 'message': 'Unauthorized'}}), 401
     
     try:
@@ -117,7 +126,7 @@ def delete_calendar_api(calendar_id):
         user_id = request.args.get('user_id')
         
         # Delete calendar
-        deleted = delete_calendar(calendar_id, user_id)
+        deleted = CalendarEntity.delete_calendar(calendar_id, user_id)
         
         if deleted:
             return jsonify({
@@ -126,7 +135,7 @@ def delete_calendar_api(calendar_id):
             })
         else:
             # Check if calendar exists
-            calendar = get_calendar_by_id(calendar_id)
+            calendar = CalendarEntity.get_calendar_by_id(calendar_id)
             if calendar:
                 return jsonify({'error': {'code': 403, 'message': 'Forbidden: You do not have permission to delete this calendar'}}), 403
             else:

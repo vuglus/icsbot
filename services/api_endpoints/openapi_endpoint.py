@@ -1,7 +1,7 @@
 import logging
 from flask import jsonify, current_app
-from services.config_service import get_api_key
-from services.api_utils import validate_api_key
+from services.config_service import Config
+from services.api_utils import AuthService
 from services.api_docs import Blueprint
 
 # Configure logging

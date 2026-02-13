@@ -12,7 +12,7 @@ def get_app():
     """Get the Flask app instance"""
     return app
 
-def initialize_api(api):
+def initialize_api(api, auth_service, config):
     """Initialize API endpoints with flask-smorest"""
     from .api_endpoints import get_endpoints
     

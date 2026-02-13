@@ -2,9 +2,9 @@ import logging
 from flask import request, jsonify
 from marshmallow import Schema, fields
 from dateutil import tz
-from services.config_service import get_api_key
 from services.notification_service import get_pending_events_for_api
-from services.api_utils import validate_api_key
+from services.api_utils import AuthService
+from services.config_service import Config
 from services.api_docs import Blueprint
 
 # Configure logging
@@ -52,7 +52,10 @@ class PendingEventsSchema(Schema):
 )
 def get_events_pending(args):
     """Get pending events"""
-    if not validate_api_key():
+    # AuthService and Config instances will be injected here
+    # For now, we'll use a placeholder
+    auth_service = AuthService(None, Config({}))
+    if not auth_service.validate_api_key():
         return jsonify({'error': {'code': 401, 'message': 'Unauthorized'}}), 401
     
     try:

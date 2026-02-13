@@ -7,7 +7,7 @@ import pytest
 # Add the services directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from services.database import init_db, create_user, create_calendar, get_calendars, set_db_path
+from services.database import init_db, UserEntity, CalendarEntity, set_db_path
 from migrations.migration_manager import init_migration_table, get_executed_migrations, record_migration
 from migrations.remove_calendar_duplicates import run as run_remove_calendar_duplicates
 
@@ -111,7 +111,7 @@ def test_remove_calendar_duplicates_migration():
         conn.close()
         
         # Create a user
-        user = create_user("test_user")
+        user = UserEntity.create_user("test_user")
         
         # Manually insert duplicate calendars
         conn = sqlite3.connect(temp_db.name)
@@ -141,7 +141,7 @@ def test_remove_calendar_duplicates_migration():
         conn.close()
         
         # Verify we have duplicates
-        calendars_before = get_calendars()
+        calendars_before = CalendarEntity.get_calendars()
         print(f"Calendars before migration: {len(calendars_before)}")
         assert len(calendars_before) == 3, f"Expected 3 calendars before migration, but found {len(calendars_before)}"
         
@@ -152,7 +152,7 @@ def test_remove_calendar_duplicates_migration():
         set_db_path(temp_db.name)
         
         # Verify duplicates were removed
-        calendars_after = get_calendars()
+        calendars_after = CalendarEntity.get_calendars()
         print(f"Calendars after migration: {len(calendars_after)}")
         assert len(calendars_after) == 2, f"Expected 2 calendars after migration, but found {len(calendars_after)}"
         

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 # Add the parent directory to the path so we can import our modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from services.database import init_db, create_user, create_calendar, create_event, get_pending_events, set_db_path
+from services.database import init_db, UserEntity, CalendarEntity, EventEntity, set_db_path
 from services.notification_service import get_pending_events_for_api
 
 def test_user_filtering_direct():
@@ -23,12 +23,12 @@ def test_user_filtering_direct():
     init_db()
     
     # Add test data
-    user1 = create_user('user1')
-    user2 = create_user('user2')
+    user1 = UserEntity.create_user('user1')
+    user2 = UserEntity.create_user('user2')
     
     # Add calendars
-    cal1 = create_calendar(user1.id, 'http://example.com/cal1.ics')
-    cal2 = create_calendar(user2.id, 'http://example.com/cal2.ics')
+    cal1 = CalendarEntity.create_calendar(user1.id, 'http://example.com/cal1.ics')
+    cal2 = CalendarEntity.create_calendar(user2.id, 'http://example.com/cal2.ics')
     
     # Add events for 5 minutes from now (within the default 10-minute notification window)
     # Use SQLite's datetime function to ensure consistency
@@ -39,11 +39,11 @@ def test_user_filtering_direct():
     event_time = cursor.fetchone()[0]
     conn.close()
     
-    event1 = create_event(cal1.id, 'event1', 'Test Event 1', '', '', event_time, event_time, False)
-    event2 = create_event(cal2.id, 'event2', 'Test Event 2', '', '', event_time, event_time, False)
+    event1 = EventEntity.create_event(cal1.id, 'event1', 'Test Event 1', '', '', event_time, event_time, False)
+    event2 = EventEntity.create_event(cal2.id, 'event2', 'Test Event 2', '', '', event_time, event_time, False)
     
     # Test getting all pending events
-    all_events = get_pending_events()
+    all_events = EventEntity.get_pending_events()
     print(f"Found {len(all_events)} total pending events")
     for event in all_events:
         print(f"  - {event.title}")
@@ -51,7 +51,7 @@ def test_user_filtering_direct():
         print(f"    Attributes: {vars(event)}")
     
     # Test getting pending events for user1
-    user1_events = get_pending_events('user1')
+    user1_events = EventEntity.get_pending_events('user1')
     print(f"Found {len(user1_events)} pending events for user1")
     for event in user1_events:
         print(f"  - {event.title}")
@@ -59,7 +59,7 @@ def test_user_filtering_direct():
         print(f"    Attributes: {vars(event)}")
     
     # Test getting pending events for user2
-    user2_events = get_pending_events('user2')
+    user2_events = EventEntity.get_pending_events('user2')
     print(f"Found {len(user2_events)} pending events for user2")
     for event in user2_events:
         print(f"  - {event.title}")
@@ -68,7 +68,7 @@ def test_user_filtering_direct():
     
     # Test getting pending events for nonexistent user
     try:
-        nonexistent_events = get_pending_events('nonexistent')
+        nonexistent_events = EventEntity.get_pending_events('nonexistent')
         print(f"Found {len(nonexistent_events)} pending events for nonexistent user (unexpected)")
     except ValueError as e:
         print(f"Correctly caught error for nonexistent user: {e}")

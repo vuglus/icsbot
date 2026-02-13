@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 # Add the parent directory to the path so we can import our modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from services.database import init_db, create_user, create_calendar, create_event, set_db_path
+from services.database import init_db, UserEntity, CalendarEntity, EventEntity, set_db_path
 
 def test_api_integration():
     """Test the API integration with user filtering"""
@@ -26,17 +26,17 @@ def test_api_integration():
     init_db()
     
     # Add test data
-    user1 = create_user('user1')
-    user2 = create_user('user2')
+    user1 = UserEntity.create_user('user1')
+    user2 = UserEntity.create_user('user2')
     
     # Add calendars
-    cal1 = create_calendar(user1.id, 'http://example.com/cal1.ics')
-    cal2 = create_calendar(user2.id, 'http://example.com/cal2.ics')
+    cal1 = CalendarEntity.create_calendar(user1.id, 'http://example.com/cal1.ics')
+    cal2 = CalendarEntity.create_calendar(user2.id, 'http://example.com/cal2.ics')
     
     # Add events for 5 minutes from now
     event_time = (datetime.now() + timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S')
-    event1 = create_event(cal1.id, 'event1', 'Test Event 1', '', '', event_time, event_time, False)
-    event2 = create_event(cal2.id, 'event2', 'Test Event 2', '', '', event_time, event_time, False)
+    event1 = EventEntity.create_event(cal1.id, 'event1', 'Test Event 1', '', '', event_time, event_time, False)
+    event2 = EventEntity.create_event(cal2.id, 'event2', 'Test Event 2', '', '', event_time, event_time, False)
     
     # Set environment variables for the API
     os.environ['ICS_GATE_API_KEY'] = 'test-api-key'

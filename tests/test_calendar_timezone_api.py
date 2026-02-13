@@ -5,10 +5,10 @@ import json
 from datetime import datetime, timezone, timedelta
 from flask import Flask
 from flask_smorest import Api
-from services.api_service import get_app, initialize_api
-from services.database import init_db, create_user, create_calendar, create_event
-from services.database import set_db_path
-from services.api_service import get_app
+from services.api_service import initialize_api
+from services.database import init_db, UserEntity, CalendarEntity, EventEntity, set_db_path
+from services.config_service import Config
+from services.api_utils import AuthService
 
 class TestCalendarTimezoneAPI(unittest.TestCase):
     def setUp(self):
@@ -25,17 +25,17 @@ class TestCalendarTimezoneAPI(unittest.TestCase):
 
                 
         # Create a test user
-        self.user = create_user("test_user")
+        self.user = UserEntity.create_user("test_user")
         
         # Create a calendar with timezone
-        self.calendar = create_calendar(self.user.id, "https://example.com/calendar.ics")
+        self.calendar = CalendarEntity.create_calendar(self.user.id, "https://example.com/calendar.ics")
         # Create an event for 1 hour from now
 
         future_time = datetime.now(timezone.utc) + timedelta(hours=1)
         start_time = future_time.replace(second=0, microsecond=0)
         end_time = (future_time + timedelta(hours=1)).replace(second=0, microsecond=0)
         
-        self.event = create_event(
+        self.event = EventEntity.create_event(
             calendar_id=self.calendar.id,
             uid="test-event-123",
             title="Test Event",
@@ -53,8 +53,12 @@ class TestCalendarTimezoneAPI(unittest.TestCase):
         self.app.config["API_VERSION"] = "v1"
         self.app.config["OPENAPI_VERSION"] = "3.0.2"        
         # Initialize API endpoints
+        config = Config({
+            'api_key': 'test-api-key'
+        })
+        auth_service = AuthService(self.app, config)
         api = Api(self.app)
-        initialize_api(api)
+        initialize_api(api, auth_service, config)
 
         # Create Flask test client
         self.client = self.app.test_client()

@@ -1,8 +1,7 @@
 import unittest
 import tempfile
 import os
-from services.database import init_db, get_calendars, create_user, create_calendar, get_calendar_by_id
-from services.database import set_db_path
+from services.database import init_db, CalendarEntity, UserEntity, set_db_path
 
 class TestCalendarTimezoneMigration(unittest.TestCase):
     def setUp(self):
@@ -15,7 +14,7 @@ class TestCalendarTimezoneMigration(unittest.TestCase):
         init_db()
         
         # Create a test user
-        self.user = create_user("test_user")
+        self.user = UserEntity.create_user("test_user")
         
     def tearDown(self):
         # Clean up the temporary database
@@ -24,7 +23,7 @@ class TestCalendarTimezoneMigration(unittest.TestCase):
     def test_calendar_timezone_field_exists(self):
         """Test that calendars have timezone field after migration"""
         # Create a calendar
-        calendar = create_calendar(self.user.id, "https://example.com/calendar.ics")
+        calendar = CalendarEntity.create_calendar(self.user.id, "https://example.com/calendar.ics")
         
         # Check that the calendar has a timezone field
         self.assertTrue(hasattr(calendar, 'timezone'))
@@ -33,10 +32,10 @@ class TestCalendarTimezoneMigration(unittest.TestCase):
     def test_get_calendars_includes_timezone(self):
         """Test that get_calendars returns timezone information"""
         # Create a calendar
-        created_calendar = create_calendar(self.user.id, "https://example.com/calendar.ics")
+        created_calendar = CalendarEntity.create_calendar(self.user.id, "https://example.com/calendar.ics")
         
         # Get all calendars
-        calendars = get_calendars()
+        calendars = CalendarEntity.get_calendars()
         
         # Check that we got the calendar back
         self.assertEqual(len(calendars), 1)
@@ -49,10 +48,10 @@ class TestCalendarTimezoneMigration(unittest.TestCase):
     def test_get_calendar_by_id_includes_timezone(self):
         """Test that get_calendar_by_id returns timezone information"""
         # Create a calendar
-        created_calendar = create_calendar(self.user.id, "https://example.com/calendar.ics")
+        created_calendar = CalendarEntity.create_calendar(self.user.id, "https://example.com/calendar.ics")
         
         # Get the calendar by ID
-        calendar = get_calendar_by_id(created_calendar.id)
+        calendar = CalendarEntity.get_calendar_by_id(created_calendar.id)
         
         # Check that the calendar has timezone information
         self.assertTrue(hasattr(calendar, 'timezone'))

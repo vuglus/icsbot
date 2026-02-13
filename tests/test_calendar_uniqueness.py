@@ -1,7 +1,7 @@
 import unittest
 import tempfile
 import os
-from services.database import init_db, get_db_connection, create_user, create_calendar
+from services.database import init_db, get_db_connection, UserEntity, CalendarEntity
 
 class TestCalendarUniqueness(unittest.TestCase):
     def setUp(self):
@@ -23,15 +23,15 @@ class TestCalendarUniqueness(unittest.TestCase):
     def test_calendar_unique_constraint(self):
         """Test that calendar uniqueness constraint works correctly"""
         # Create a user
-        user = create_user("test_user")
+        user = UserEntity.create_user("test_user")
         
         # Create a calendar
-        calendar1 = create_calendar(user.id, "https://example.com/calendar.ics")
+        calendar1 = CalendarEntity.create_calendar(user.id, "https://example.com/calendar.ics")
         
         # Try to create another calendar with the same user_id and URL
         # This should either return the existing calendar or raise an exception
         try:
-            calendar2 = create_calendar(user.id, "https://example.com/calendar.ics")
+            calendar2 = CalendarEntity.create_calendar(user.id, "https://example.com/calendar.ics")
             # If we get here, it should be the same calendar
             self.assertEqual(calendar1.id, calendar2.id)
         except Exception as e:
@@ -55,11 +55,11 @@ class TestCalendarUniqueness(unittest.TestCase):
     def test_calendars_with_different_urls_allowed(self):
         """Test that calendars with different URLs for the same user are allowed"""
         # Create a user
-        user = create_user("test_user")
+        user = UserEntity.create_user("test_user")
         
         # Create two calendars with different URLs
-        calendar1 = create_calendar(user.id, "https://example.com/calendar1.ics")
-        calendar2 = create_calendar(user.id, "https://example.com/calendar2.ics")
+        calendar1 = CalendarEntity.create_calendar(user.id, "https://example.com/calendar1.ics")
+        calendar2 = CalendarEntity.create_calendar(user.id, "https://example.com/calendar2.ics")
         
         # Should be different calendars
         self.assertNotEqual(calendar1.id, calendar2.id)
