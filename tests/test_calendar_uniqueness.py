@@ -1,78 +1,77 @@
 import unittest
 import tempfile
 import os
-from services.database import init_db, get_db_connection, UserEntity, CalendarEntity
+from services.database import init_db, set_db_path, set_db_provider
+from database_provider import DatabaseProvider
+from entity.base import Calendar
+
 
 class TestCalendarUniqueness(unittest.TestCase):
+    """Test calendar uniqueness constraints"""
+    
     def setUp(self):
+        """Set up test environment"""
         # Create a temporary database for testing
         self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
         self.temp_db.close()
-        
-        # Set the database path
-        from services.database import set_db_path
         set_db_path(self.temp_db.name)
+        set_db_provider('sqlite')
         
-        # Initialize the database
+        # Initialize database
         init_db()
-    
+        
     def tearDown(self):
-        # Clean up the temporary database
-        os.unlink(self.temp_db.name)
-    
-    def test_calendar_unique_constraint(self):
-        """Test that calendar uniqueness constraint works correctly"""
+        """Tear down test environment"""
+        # Clean up temporary database
+        if os.path.exists(self.temp_db.name):
+            os.unlink(self.temp_db.name)
+            
+    def test_calendar_uniqueness_constraint(self):
+        """Test that calendar uniqueness constraint works"""
+        # Initialize entities through the provider
+        provider = DatabaseProvider('sqlite', self.temp_db.name)
+        user_entity, calendar_entity, event_entity = provider.get_entities()
+        
         # Create a user
-        user = UserEntity.create_user("test_user")
+        user = user_entity.create_user('test@example.com')
         
-        # Create a calendar
-        calendar1 = CalendarEntity.create_calendar(user.id, "https://example.com/calendar.ics")
+        # Create first calendar
+        calendar1 = calendar_entity.create_calendar(user.id, 'https://example.com/test.ics')
+        self.assertIsInstance(calendar1, Calendar)
+        self.assertGreater(calendar1.id, 0)
         
-        # Try to create another calendar with the same user_id and URL
-        # This should either return the existing calendar or raise an exception
-        try:
-            calendar2 = CalendarEntity.create_calendar(user.id, "https://example.com/calendar.ics")
-            # If we get here, it should be the same calendar
-            self.assertEqual(calendar1.id, calendar2.id)
-        except Exception as e:
-            # If an exception is raised, it should be related to the unique constraint
-            # This is also acceptable behavior
-            pass
+        # Try to create duplicate calendar - should return existing calendar
+        calendar2 = calendar_entity.create_calendar(user.id, 'https://example.com/test.ics')
+        self.assertEqual(calendar1.id, calendar2.id)
         
-        # Verify only one calendar exists with this user_id and URL
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            'SELECT COUNT(*) as count FROM calendars WHERE user_id = ? AND url = ?',
-            (user.id, "https://example.com/calendar.ics")
-        )
-        count = cursor.fetchone()['count']
-        conn.close()
+        # Verify only one calendar exists
+        calendars = calendar_entity.get_calendars()
+        self.assertEqual(len(calendars), 1)
         
-        # Should have exactly one calendar
-        self.assertEqual(count, 1)
-    
-    def test_calendars_with_different_urls_allowed(self):
-        """Test that calendars with different URLs for the same user are allowed"""
-        # Create a user
-        user = UserEntity.create_user("test_user")
+    def test_calendars_for_different_users_can_have_same_url(self):
+        """Test that calendars for different users can have the same URL"""
+        # Initialize entities through the provider
+        provider = DatabaseProvider('sqlite', self.temp_db.name)
+        user_entity, calendar_entity, event_entity = provider.get_entities()
         
-        # Create two calendars with different URLs
-        calendar1 = CalendarEntity.create_calendar(user.id, "https://example.com/calendar1.ics")
-        calendar2 = CalendarEntity.create_calendar(user.id, "https://example.com/calendar2.ics")
+        # Create two users
+        user1 = user_entity.create_user('test1@example.com')
+        user2 = user_entity.create_user('test2@example.com')
         
-        # Should be different calendars
+        # Create calendars with same URL for different users
+        calendar1 = calendar_entity.create_calendar(user1.id, 'https://example.com/test.ics')
+        calendar2 = calendar_entity.create_calendar(user2.id, 'https://example.com/test.ics')
+        
+        # Both should succeed and have different IDs
+        self.assertIsInstance(calendar1, Calendar)
+        self.assertIsInstance(calendar2, Calendar)
+        self.assertGreater(calendar1.id, 0)
+        self.assertGreater(calendar2.id, 0)
         self.assertNotEqual(calendar1.id, calendar2.id)
         
         # Verify both calendars exist
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('SELECT COUNT(*) as count FROM calendars WHERE user_id = ?', (user.id,))
-        count = cursor.fetchone()['count']
-        conn.close()
-        
-        # Should have exactly two calendars
-        self.assertEqual(count, 2)
+        calendars = calendar_entity.get_calendars()
+        self.assertEqual(len(calendars), 2)
 
 if __name__ == '__main__':
     unittest.main()

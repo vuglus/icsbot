@@ -7,9 +7,9 @@ import pytest
 # Add the services directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from services.database import init_db, UserEntity, CalendarEntity, set_db_path
-from migrations.migration_manager import init_migration_table, get_executed_migrations, record_migration
-from migrations.remove_calendar_duplicates import run as run_remove_calendar_duplicates
+from services.database import init_db, set_db_path, set_db_provider
+from migrations.migration_manager import MigrationManager
+from database_provider import DatabaseProvider
 
 def test_migration_framework():
     """Test the migration framework"""
@@ -20,6 +20,7 @@ def test_migration_framework():
     try:
         # Set the database path to our temporary file
         set_db_path(temp_db.name)
+        set_db_provider('sqlite')
         
         # Initialize the database
         init_db()
@@ -53,6 +54,7 @@ def test_remove_calendar_duplicates_migration():
     try:
         # Set the database path to our temporary file
         set_db_path(temp_db.name)
+        set_db_provider('sqlite')
         
         # Initialize the database without running migrations
         conn = sqlite3.connect(temp_db.name)
@@ -108,59 +110,68 @@ def test_remove_calendar_duplicates_migration():
         ''')
         
         conn.commit()
-        conn.close()
         
         # Create a user
-        user = UserEntity.create_user("test_user")
-        
-        # Manually insert duplicate calendars
-        conn = sqlite3.connect(temp_db.name)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+        cursor.execute("INSERT INTO users (user_id) VALUES (?)", ("test_user",))
+        user_id = cursor.lastrowid
+        conn.commit()
         
         # Insert duplicate calendars directly
         cursor.execute(
             'INSERT INTO calendars (id, user_id, url) VALUES (?, ?, ?)',
-            (1, user.id, "http://example.com/calendar.ics")
+            (1, user_id, "http://example.com/calendar.ics")
         )
         calendar_id_1 = cursor.lastrowid
         
         cursor.execute(
             'INSERT INTO calendars (id, user_id, url) VALUES (?, ?, ?)',
-            (2, user.id, "http://example.com/calendar.ics")
+            (2, user_id, "http://example.com/calendar.ics")
         )
         calendar_id_2 = cursor.lastrowid
         
         cursor.execute(
             'INSERT INTO calendars (id, user_id, url) VALUES (?, ?, ?)',
-            (3, user.id, "http://example.com/calendar2.ics")
+            (3, user_id, "http://example.com/calendar2.ics")
         )
         calendar_id_3 = cursor.lastrowid
         
         conn.commit()
-        conn.close()
         
         # Verify we have duplicates
-        calendars_before = CalendarEntity.get_calendars()
-        print(f"Calendars before migration: {len(calendars_before)}")
-        assert len(calendars_before) == 3, f"Expected 3 calendars before migration, but found {len(calendars_before)}"
+        cursor.execute("SELECT COUNT(*) FROM calendars")
+        count_before = cursor.fetchone()[0]
+        print(f"Calendars before migration: {count_before}")
+        assert count_before == 3, f"Expected 3 calendars before migration, but found {count_before}"
         
-        # Run the migration
-        run_remove_calendar_duplicates()
+        # Close the connection
+        conn.close()
         
-        # Reinitialize database connection to get fresh data
-        set_db_path(temp_db.name)
+        # Run the migration manager
+        # For this test, we'll manually run the remove duplicates migration
+        from migrations.sqlite.remove_calendar_duplicates import RemoveCalendarDuplicatesMigration
+        migration = RemoveCalendarDuplicatesMigration()
+        
+        # Create a new connection for the migration
+        conn = sqlite3.connect(temp_db.name)
+        migration.run(conn)
+        conn.close()
         
         # Verify duplicates were removed
-        calendars_after = CalendarEntity.get_calendars()
-        print(f"Calendars after migration: {len(calendars_after)}")
-        assert len(calendars_after) == 2, f"Expected 2 calendars after migration, but found {len(calendars_after)}"
+        conn = sqlite3.connect(temp_db.name)
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM calendars")
+        count_after = cursor.fetchone()[0]
+        print(f"Calendars after migration: {count_after}")
+        assert count_after == 2, f"Expected 2 calendars after migration, but found {count_after}"
         
-        # Verify that the first calendar (smallest ID) was kept
-        calendar_ids_after = [c.id for c in calendars_after]
-        assert calendar_id_1 in calendar_ids_after, "First calendar should be kept"
-        assert calendar_id_2 not in calendar_ids_after, "Duplicate calendar should be removed"
-        assert calendar_id_3 in calendar_ids_after, "Unique calendar should be kept"
+        # Check which calendars remain
+        cursor.execute("SELECT id FROM calendars ORDER BY id")
+        remaining_ids = [row[0] for row in cursor.fetchall()]
+        assert 1 in remaining_ids, "First calendar should be kept"
+        assert 2 not in remaining_ids, "Duplicate calendar should be removed"
+        assert 3 in remaining_ids, "Unique calendar should be kept"
+        
+        conn.close()
         
         print("Test passed: Remove calendar duplicates migration works correctly")
         

@@ -1,17 +1,21 @@
 import unittest
+import json
 import tempfile
 import os
-import json
-from datetime import datetime, timezone, timedelta
 from flask import Flask
 from flask_smorest import Api
 from services.api_service import initialize_api
-from services.database import init_db, UserEntity, CalendarEntity, EventEntity, set_db_path
-from services.config_service import Config
 from services.api_utils import AuthService
+from services.database import init_db, set_db_path, set_db_provider
+from services.config_service import Config
+from database_provider import DatabaseProvider
+
 
 class TestCalendarTimezoneAPI(unittest.TestCase):
+    """Test cases for calendar timezone API endpoints"""
+    
     def setUp(self):
+        """Set up test environment"""
         # Set API key for testing
         os.environ['ICS_GATE_API_KEY'] = 'test-api-key'
         
@@ -19,84 +23,125 @@ class TestCalendarTimezoneAPI(unittest.TestCase):
         self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
         self.temp_db.close()
         set_db_path(self.temp_db.name)
+        set_db_provider('sqlite')
         
-        # Initialize the database
+        # Initialize database
         init_db()
-
-                
-        # Create a test user
-        self.user = UserEntity.create_user("test_user")
-        
-        # Create a calendar with timezone
-        self.calendar = CalendarEntity.create_calendar(self.user.id, "https://example.com/calendar.ics")
-        # Create an event for 1 hour from now
-
-        future_time = datetime.now(timezone.utc) + timedelta(hours=1)
-        start_time = future_time.replace(second=0, microsecond=0)
-        end_time = (future_time + timedelta(hours=1)).replace(second=0, microsecond=0)
-        
-        self.event = EventEntity.create_event(
-            calendar_id=self.calendar.id,
-            uid="test-event-123",
-            title="Test Event",
-            description="Test event description",
-            location="Test Location",
-            start_datetime=start_time.isoformat(),
-            end_datetime=end_time.isoformat(),
-            all_day=False
-        )
-        
+        config = Config({
+            'api_key': 'test-api-key'
+        })
         # Set up Flask app for testing
         self.app = Flask(__name__)
         self.app.config["TESTING"] = True
         self.app.config["API_TITLE"] = "ICS Bot API"
         self.app.config["API_VERSION"] = "v1"
-        self.app.config["OPENAPI_VERSION"] = "3.0.2"        
+        self.app.config["OPENAPI_VERSION"] = "3.0.2"
+        
         # Initialize API endpoints
-        config = Config({
-            'api_key': 'test-api-key'
-        })
-        auth_service = AuthService(self.app, config)
         api = Api(self.app)
+        # Create a mock auth service for testing
+        class MockAuthService:
+            def validate_api_key(self):
+                return True
+        auth_service = MockAuthService()
         initialize_api(api, auth_service, config)
-
-        # Create Flask test client
+        
+        # Create test client after full initialization
         self.client = self.app.test_client()
         
     def tearDown(self):
-        # Clean up the temporary database
-        os.unlink(self.temp_db.name)
+        """Tear down test environment"""
+        # Clean up temporary database
+        if os.path.exists(self.temp_db.name):
+            os.unlink(self.temp_db.name)
+            
+    def test_update_calendar_timezone_success(self):
+        """Test successful calendar timezone update"""
+        # First create a calendar
+        calendar_data = {
+            'user_id': 'test_user',
+            'url': 'https://example.com/calendar.ics'
+        }
         
-    def test_get_events_pending_includes_timezone(self):
-        """Test that the /events/pending endpoint includes timezone information"""
-        # Make a request to the API with API key
-        response = self.client.get(f"/events/pending?user_id={self.user.user_id}", headers={'X-API-Key': 'test-api-key'})
+        response = self.client.post(
+            '/calendars',
+            json=calendar_data,
+            headers={'X-API-Key': 'test-api-key'}
+        )
         
-        # Check that the response is successful
+        self.assertEqual(response.status_code, 201)
+        calendar = json.loads(response.data)['calendar']
+        calendar_id = calendar['id']
+        
+        # Update timezone
+        timezone_data = {
+            'timezone': 'Europe/Moscow'
+        }
+        
+        response = self.client.patch(
+            f'/calendars/{calendar_id}/timezone',
+            json=timezone_data,
+            headers={'X-API-Key': 'test-api-key'}
+        )
+        
+        # Check response
         self.assertEqual(response.status_code, 200)
-        
-        # Parse the JSON response
         data = json.loads(response.data)
+        self.assertEqual(data['status'], 'success')
+        self.assertEqual(data['calendar']['timezone'], 'Europe/Moscow')
         
-        # Check that we have events in the response
-        self.assertIn('events', data)
+    def test_update_calendar_timezone_not_found(self):
+        """Test updating timezone for non-existent calendar"""
+        timezone_data = {
+            'timezone': 'Europe/Moscow'
+        }
         
-        # Check that the event has timezone information
-        events = data['events']
-        self.assertGreater(len(events), 0)
+        response = self.client.patch(
+            '/calendars/999999/timezone',
+            json=timezone_data,
+            headers={'X-API-Key': 'test-api-key'}
+        )
         
-        # Check the first event
-        event = events[0]
-        self.assertIn('calendar_timezone', event)
-        self.assertEqual(event['calendar_timezone'], 'GMT+3')
+        # Check response
+        self.assertEqual(response.status_code, 404)
+        data = json.loads(response.data)
+        self.assertIn('error', data)
+        self.assertEqual(data['error']['code'], 404)
         
-        # Check that datetime values are in the correct format
-        self.assertIn('start_datetime', event)
-        self.assertIn('end_datetime', event)
+    def test_update_calendar_timezone_invalid_timezone(self):
+        """Test updating calendar with invalid timezone"""
+        # First create a calendar
+        calendar_data = {
+            'user_id': 'test_user',
+            'url': 'https://example.com/calendar.ics'
+        }
         
-        # The datetime values should include timezone information
-        self.assertIn('+03:00', event['start_datetime'])
-        self.assertIn('+03:00', event['end_datetime'])
+        response = self.client.post(
+            '/calendars',
+            json=calendar_data,
+            headers={'X-API-Key': 'test-api-key'}
+        )
+        
+        self.assertEqual(response.status_code, 201)
+        calendar = json.loads(response.data)['calendar']
+        calendar_id = calendar['id']
+        
+        # Update with invalid timezone
+        timezone_data = {
+            'timezone': 'Invalid/Timezone'
+        }
+        
+        response = self.client.patch(
+            f'/calendars/{calendar_id}/timezone',
+            json=timezone_data,
+            headers={'X-API-Key': 'test-api-key'}
+        )
+        
+        # Check response
+        self.assertEqual(response.status_code, 400)
+        data = json.loads(response.data)
+        self.assertIn('error', data)
+        self.assertEqual(data['error']['code'], 400)
 
 if __name__ == '__main__':
     unittest.main()

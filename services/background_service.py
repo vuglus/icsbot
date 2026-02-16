@@ -1,7 +1,7 @@
 import logging
 from apscheduler.schedulers.background import BackgroundScheduler
-from .calendar_service import sync_all_calendars
-from .notification_service import check_pending_notifications
+from services.calendar_service import CalendarService
+from services.notification_service import NotificationService
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -10,13 +10,16 @@ logger = logging.getLogger(__name__)
 SYNC_INTERVAL_MINUTES = None  # This will be set from the main app
 NOTIFY_INTERVAL_SECONDS = None  # This will be set from the main app
 
-def start_background_processes():
+def start_background_processes(
+        calendarService: CalendarService,
+        notificationService: NotificationService
+):
     """Start background processes"""
     scheduler = BackgroundScheduler()
     
     # Add sync job
     scheduler.add_job(
-        sync_all_calendars,
+        calendarService.sync_all_calendars,
         'interval',
         minutes=SYNC_INTERVAL_MINUTES,
         id='ics_sync'
@@ -24,7 +27,7 @@ def start_background_processes():
     
     # Add notification check job
     scheduler.add_job(
-        check_pending_notifications,
+        notificationService.check_pending_notifications,
         'interval',
         seconds=NOTIFY_INTERVAL_SECONDS,
         id='notification_check'

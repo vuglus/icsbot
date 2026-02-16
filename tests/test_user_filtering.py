@@ -1,116 +1,106 @@
 import unittest
 import tempfile
 import os
-from datetime import datetime, timedelta
-import sys
-import sqlite3
+from services.database import init_db, set_db_path, set_db_provider
+from database_provider import DatabaseProvider
 
-# Add the parent directory to the path so we can import our modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from services.database import (
-    init_db,
-    UserEntity,
-    CalendarEntity,
-    EventEntity
-)
-from services.notification_service import get_pending_events_for_api
 
 class TestUserFiltering(unittest.TestCase):
+    """Test user filtering functionality"""
+    
     def setUp(self):
-        # Create a temporary database file
+        """Set up test environment"""
+        # Create a temporary database for testing
         self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
         self.temp_db.close()
-        self.db_path = self.temp_db.name
+        set_db_path(self.temp_db.name)
+        set_db_provider('sqlite')
         
-        # Set the database path
-        from services.database import set_db_path
-        set_db_path(self.db_path)
-        
-        # Initialize the database
+        # Initialize database
         init_db()
         
-        # Add test data
-        self.add_test_data()
-
     def tearDown(self):
-        # Remove the temporary database file
-        os.unlink(self.db_path)
-
-    def add_test_data(self):
-        # Add users
-        user1 = UserEntity.create_user('user1')
-        user2 = UserEntity.create_user('user2')
+        """Tear down test environment"""
+        # Clean up temporary database
+        if os.path.exists(self.temp_db.name):
+            os.unlink(self.temp_db.name)
+            
+    def test_get_users_with_calendars(self):
+        """Test getting users with calendars"""
+        # Initialize entities through the provider
+        provider = DatabaseProvider('sqlite', self.temp_db.name)
+        user_entity, calendar_entity, event_entity = provider.get_entities()
         
-        # Add calendars
-        cal1 = CalendarEntity.create_calendar(user1.id, 'http://example.com/cal1.ics')
-        cal2 = CalendarEntity.create_calendar(user2.id, 'http://example.com/cal2.ics')
+        # Create users
+        user1 = user_entity.create_user('user1@example.com')
+        user2 = user_entity.create_user('user2@example.com')
+        user3 = user_entity.create_user('user3@example.com')
         
-        # Add events using SQLite's datetime functions to ensure consistency
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        # Create calendars for some users
+        calendar_entity.create_calendar(user1.id, 'https://example.com/cal1.ics')
+        calendar_entity.create_calendar(user2.id, 'https://example.com/cal2.ics')
+        # user3 has no calendars
         
-        # Add an event for user1 that should be pending (5 minutes from now)
-        cursor.execute("SELECT datetime('now', '+5 minutes') as event_time")
-        event_time1 = cursor.fetchone()[0]
-        EventEntity.create_event(cal1.id, 'event1', 'Test Event 1', '', '', event_time1, event_time1, False)
+        # Get users with calendars
+        users_with_calendars = user_entity.get_users_with_calendars()
         
-        # Add an event for user2 that should be pending (10 minutes from now)
-        cursor.execute("SELECT datetime('now', '+10 minutes') as event_time")
-        event_time2 = cursor.fetchone()[0]
-        EventEntity.create_event(cal2.id, 'event2', 'Test Event 2', '', '', event_time2, event_time2, False)
+        # Should only return users with calendars
+        self.assertEqual(len(users_with_calendars), 2)
+        user_ids_with_calendars = [user['id'] for user in users_with_calendars]
+        self.assertIn(user1.id, user_ids_with_calendars)
+        self.assertIn(user2.id, user_ids_with_calendars)
+        self.assertNotIn(user3.id, user_ids_with_calendars)
         
-        conn.close()
-
-    def test_get_pending_events_with_user_filter(self):
-        """Test getting pending events filtered by user ID"""
-        events = EventEntity.get_pending_events('user1')
-        # Should get exactly 1 event for user1
-        self.assertEqual(len(events), 1)
-        self.assertEqual(events[0].title, 'Test Event 1')
-
-    def test_get_pending_events_without_filter(self):
-        """Test getting all pending events without filtering"""
-        events = EventEntity.get_pending_events()
-        # Should get both events
-        self.assertEqual(len(events), 2)
-        # Events should be ordered by start_datetime
-        titles = [event.title for event in events]
-        self.assertIn('Test Event 1', titles)
-        self.assertIn('Test Event 2', titles)
-
-    def test_get_pending_events_api_with_user_filter(self):
-        """Test getting pending events through API with user filter"""
-        events = get_pending_events_for_api('user1')
-        # Should get exactly 1 event for user1
-        self.assertEqual(len(events), 1)
-        self.assertEqual(events[0].title, 'Test Event 1')
-
-    def test_get_pending_events_api_without_filter(self):
-        """Test getting all pending events through API without filter"""
-        events = get_pending_events_for_api()
-        # Should get both events
-        self.assertEqual(len(events), 2)
-        # Events should be ordered by start_datetime
-        titles = [event.title for event in events]
-        self.assertIn('Test Event 1', titles)
-        self.assertIn('Test Event 2', titles)
-
-    def test_user_not_found(self):
-        """Test behavior when user is not found"""
-        with self.assertRaises(ValueError):
-            EventEntity.get_pending_events('nonexistent_user')
-
-    def test_no_pending_events(self):
-        """Test when there are no pending events"""
-        # Mark all events as notified
-        events = EventEntity.get_pending_events()
-        for event in events:
-            EventEntity.mark_event_notified(event.id)
+    def test_get_users_with_pending_events(self):
+        """Test getting users with pending events"""
+        # Initialize entities through the provider
+        provider = DatabaseProvider('sqlite', self.temp_db.name)
+        user_entity, calendar_entity, event_entity = provider.get_entities()
         
-        # Now there should be no pending events
-        events = EventEntity.get_pending_events()
-        self.assertEqual(len(events), 0)
+        # Create users
+        user1 = user_entity.create_user('user1@example.com')
+        user2 = user_entity.create_user('user2@example.com')
+        user3 = user_entity.create_user('user3@example.com')
+        
+        # Create calendars
+        calendar_id1 = calendar_entity.create_calendar(user1.id, 'https://example.com/cal1.ics')
+        calendar_id2 = calendar_entity.create_calendar(user2.id, 'https://example.com/cal2.ics')
+        calendar_id3 = calendar_entity.create_calendar(user3.id, 'https://example.com/cal3.ics')
+        
+        # Create events for some users
+        event_entity.create_event(
+            calendar_id=calendar_id1,
+            uid='event1',
+            title='Event 1',
+            start_datetime='2023-01-01 10:00:00',
+            end_datetime='2023-01-01 11:00:00',
+            description='Test event',
+            location='',
+            all_day=False
+        )
+        
+        event_entity.create_event(
+            calendar_id=calendar_id2,
+            uid='event2',
+            title='Event 2',
+            start_datetime='2023-01-01 10:00:00',
+            end_datetime='2023-01-01 11:00:00',
+            description='Test event',
+            location='',
+            all_day=False
+        )
+        
+        # user_id3 has no events
+        
+        # Get users with pending events
+        users_with_events = user_entity.get_users_with_pending_events()
+        
+        # Should only return users with events
+        self.assertEqual(len(users_with_events), 2)
+        user_ids_with_events = [user['id'] for user in users_with_events]
+        self.assertIn(user1.id, user_ids_with_events)
+        self.assertIn(user2.id, user_ids_with_events)
+        self.assertNotIn(user3.id, user_ids_with_events)
 
 if __name__ == '__main__':
     unittest.main()

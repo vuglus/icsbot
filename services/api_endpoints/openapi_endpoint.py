@@ -1,7 +1,5 @@
 import logging
 from flask import jsonify, current_app
-from services.config_service import Config
-from services.api_utils import AuthService
 from services.api_docs import Blueprint
 
 # Configure logging
@@ -175,11 +173,3 @@ def get_openapi_spec():
         }
     
     return jsonify(openapi_spec)
-
-def register_openapi_endpoint(app):
-    """Register OpenAPI specification endpoint"""
-    # Register the blueprint with the app
-    app.register_blueprint(openapi_blp)
-    
-    # Return the view function
-    return get_openapi_spec
