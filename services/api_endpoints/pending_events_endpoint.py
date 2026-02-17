@@ -3,6 +3,8 @@ from flask import request, jsonify
 from marshmallow import Schema, fields
 from dateutil import tz
 from services.api_docs import Blueprint
+from services.api_service import AuthService 
+from services.notification_service import NotificationService
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -33,7 +35,7 @@ def convert_datetime_to_timezone(dt_string, timezone_name):
         logger.warning(f"Error converting datetime {dt_string} to timezone {timezone_name}: {e}")
         return dt_string  # Return original if conversion fails
 
-def create_pending_events_blueprint(auth_service, notification_service):
+def create_pending_events_blueprint(auth_service: AuthService, notification_service: NotificationService):
     # Create a blueprint for this endpoint
     pending_events_blp = Blueprint('events', __name__, url_prefix='/events')
 

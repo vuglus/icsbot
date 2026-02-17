@@ -9,3 +9,4 @@ python-dateutil>=2.8.0
 python-decouple>=3.4.0
 pytest
 ydb>=3.0.0
+pytz

@@ -5,6 +5,7 @@ from typing import List
 from entity.base import BaseEventEntity, Event, User, Calendar
 from entity.ydb.user_entity import UserEntity
 from entity.ydb.calendar_entity import CalendarEntity
+import pytz
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -58,27 +59,42 @@ class EventEntity(BaseEventEntity):
             user_internal_id = self.user_entity.get_user_id_by_external_id(user_id)
             if not user_internal_id:
                 raise ValueError(f"User {user_id} not found")
+            
+            # Calculate date range in code
+            from datetime import datetime, timedelta
+            import pytz
+            
+            # Get current time in UTC
+            now_utc = datetime.utcnow()
+            # Calculate the time window (from now to now + notify_before_minutes)
+            future_time = now_utc + timedelta(minutes=self.notify_before_minutes)
+            
+            # Format dates for logging and query parameters
+            now_utc_str = now_utc.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+            future_time_str = future_time.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+            logger.info(f"Checking pending events from {now_utc_str} to {future_time_str}")
+            
             query = """
             DECLARE $user_id AS Utf8;
-            DECLARE $notify_before_minutes AS Int32;
-            SELECT e.id, e.calendar_id, e.uid, e.title, e.description, e.location,
-                    e.start_datetime, e.end_datetime, e.all_day, e.notified,
-                    u.user_id as user_id, c.timezone as calendar_timezone
+            DECLARE $now AS Utf8;
+            DECLARE $future_time AS Utf8;
+            SELECT e.*, u.user_id as user_id, c.timezone as calendar_timezone
             FROM events e
             JOIN calendars c ON e.calendar_id = c.id
             JOIN users u ON c.user_id = u.id
             WHERE e.notified = false
-            AND e.start_datetime <= CAST(CurrentUtcTimestamp() AS String)
-            AND e.start_datetime > CAST(CurrentUtcTimestamp() AS String)
+            AND start_datetime <= $future_time
+            AND start_datetime > $now
             AND u.user_id = $user_id
-            ORDER BY e.start_datetime ASC;
+            ORDER BY start_datetime ASC;
             """
             prepared_query = session.prepare(query)
             result = session.transaction().execute(
                 prepared_query,
                 parameters={
                     "$user_id": user_id,
-                    "$notify_before_minutes": self.notify_before_minutes
+                    "$now": now_utc_str,
+                    "$future_time": future_time_str
                 },
                 commit_tx=True,
             )
