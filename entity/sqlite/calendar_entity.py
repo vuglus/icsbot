@@ -71,7 +71,7 @@ class CalendarEntity(BaseCalendarEntity):
                          row['last_sync_at'], row['sync_hash'],
                          row['timezone'] if 'timezone' in row.keys() else 'GMT+3') for row in rows]
     
-    def delete_calendar(self, calendar_id: int, user_id: str = None) -> bool:
+    def delete_calendar(self, calendar_id: str, user_id: str = None) -> bool:
         """Delete a calendar by ID, optionally checking user ownership"""
         cursor = self.db_connection.cursor()
         
@@ -92,7 +92,7 @@ class CalendarEntity(BaseCalendarEntity):
         
         return deleted
     
-    def get_calendar_by_id(self, calendar_id: int) -> Calendar:
+    def get_calendar_by_id(self, calendar_id: str) -> Calendar:
         """Get a specific calendar by ID"""
         cursor = self.db_connection.cursor()
         
@@ -106,7 +106,7 @@ class CalendarEntity(BaseCalendarEntity):
         else:
             return None
     
-    def update_calendar_sync(self, calendar_id: int, sync_hash: str):
+    def update_calendar_sync(self, calendar_id: str, sync_hash: str):
         """Update calendar sync metadata"""
         cursor = self.db_connection.cursor()
         
@@ -118,7 +118,7 @@ class CalendarEntity(BaseCalendarEntity):
         
         logger.info(f"Updated sync metadata for calendar {calendar_id}")
     
-    def get_existing_event_uids(self, calendar_id: int) -> set:
+    def get_existing_event_uids(self, calendar_id: str) -> set:
         """Get existing event UIDs for a calendar"""
         cursor = self.db_connection.cursor()
         

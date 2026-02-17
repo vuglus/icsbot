@@ -20,6 +20,10 @@ class CalendarService:
     def create_calendar(self, user_id: str, url: str) -> bool:
         """Create a new calendar"""
         return self.calendars.create_calendar(user_id, url)
+    
+    def get_calendar_by_id(self, calendar_id: str):
+        """Get a calendar by ID"""
+        return self.calendars.get_calendar_by_id(calendar_id)
 
     def sync_all_calendars(self):
         """Sync all calendars"""
@@ -65,9 +69,9 @@ class CalendarService:
                 updated_uids.add(uid)
                 
                 # Upsert event using EventEntity
-                self.ev.upsert_event(
+                self.events.upsert_event(
                     calendar.id, uid, event_data['summary'], event_data['description'],
-                    event_data['location'], event_data['start'], event_data['end'], 
+                    event_data['location'], event_data['start'], event_data['end'],
                     event_data['all_day']
                 )
             
@@ -83,4 +87,18 @@ class CalendarService:
             
         except Exception as e:
             logger.error(f"Error syncing calendar {calendar.id}: {e}")
+            return False
+    
+    def sync_calendar_by_id(self, calendar_id: str) -> bool:
+        """Sync a specific calendar by ID"""
+        try:
+            calendar = self.calendars.get_calendar_by_id(calendar_id)
+            if not calendar:
+                logger.error(f"Calendar with ID {calendar_id} not found")
+                return False
+            
+            return self.sync_calendar(calendar)
+            
+        except Exception as e:
+            logger.error(f"Error syncing calendar {calendar_id}: {e}")
             return False

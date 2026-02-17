@@ -99,7 +99,7 @@ def create_calendar_blueprint(auth_service, calendar_service: CalendarService):
             logger.error(f"Error getting calendars: {e}")
             return jsonify({'error': {'code': 500, 'message': 'Internal Server Error'}}), 500
 
-    @calendar_blp.route('/<int:calendar_id>', methods=['DELETE'])
+    @calendar_blp.route('/<string:calendar_id>', methods=['DELETE'])
     @calendar_blp.doc(
         summary="Delete calendar",
         description="Deletes a calendar by ID, optionally checking user ownership",
@@ -136,6 +136,41 @@ def create_calendar_blueprint(auth_service, calendar_service: CalendarService):
             return jsonify({'error': {'code': 404, 'message': 'User not found'}}), 404
         except Exception as e:
             logger.error(f"Error deleting calendar: {e}")
+            return jsonify({'error': {'code': 500, 'message': 'Internal Server Error'}}), 500
+
+    @calendar_blp.route('/<string:calendar_id>/sync', methods=['PUT'])
+    @calendar_blp.doc(
+        summary="Force calendar synchronization",
+        description="Triggers immediate synchronization for a specific calendar",
+        security=[{"ApiKeyAuth": []}]
+    )
+    def sync_calendar_api(calendar_id):
+        """Force synchronization for a specific calendar"""
+        if not auth_service.validate_api_key():
+            return jsonify({'error': {'code': 401, 'message': 'Unauthorized'}}), 401
+        
+        try:
+            # Check if calendar exists
+            calendar = calendar_service.get_calendar_by_id(calendar_id)
+            if not calendar:
+                return jsonify({'error': {'code': 404, 'message': 'Calendar not found'}}), 404
+            
+            # Force synchronization
+            success = calendar_service.sync_calendar_by_id(calendar_id)
+            
+            if success:
+                return jsonify({
+                    'status': 'success',
+                    'message': 'Calendar synchronization completed successfully'
+                })
+            else:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Calendar synchronization failed'
+                }), 500
+                    
+        except Exception as e:
+            logger.error(f"Error synchronizing calendar {calendar_id}: {e}")
             return jsonify({'error': {'code': 500, 'message': 'Internal Server Error'}}), 500
 
     return calendar_blp

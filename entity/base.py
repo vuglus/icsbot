@@ -131,12 +131,6 @@ class BaseEventEntity(abc.ABC):
     """Base interface for event-related database operations"""
     
     @abc.abstractmethod
-    def create_event(self, calendar_id: str, uid: str, title: str, description: str, 
-                     location: str, start_datetime: str, end_datetime: str, all_day: bool) -> Event:
-        """Create a new event"""
-        pass
-    
-    @abc.abstractmethod
     def get_pending_events(self, user_id: str = None) -> List[Event]:
         """Get events that need to be notified"""
         pass

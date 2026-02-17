@@ -18,37 +18,6 @@ class EventEntity(BaseEventEntity):
         self.calendar_entity = CalendarEntity(db_connection)
         self.notify_before_minutes = notify_before_minutes
     
-    def create_event(self, calendar_id: int, uid: str, title: str, description: str,
-                     location: str, start_datetime: str = None, end_datetime: str = None,
-                     all_day: bool = False, **kwargs) -> Event:
-        """Create a new event"""
-        # Handle both parameter names
-        if 'start_time' in kwargs:
-            start_datetime = kwargs['start_time']
-        if 'end_time' in kwargs:
-            end_datetime = kwargs['end_time']
-            
-        cursor = self.db_connection.cursor()
-        
-        # Extract calendar ID if it's a Calendar object
-        if hasattr(calendar_id, 'id'):
-            calendar_id = calendar_id.id
-
-        cursor.execute('''
-            INSERT INTO events (calendar_id, uid, title, description, location,
-                               start_datetime, end_datetime, all_day)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (calendar_id, uid, title, description, location,
-              start_datetime, end_datetime, all_day))
-        
-        self.db_connection.commit()
-        event_id = cursor.lastrowid
-        print(f"Created event {event_id} for calendar {calendar_id}")  # Debug output
-        
-        logger.info(f"Created event {event_id} for calendar {calendar_id}")
-        return Event(event_id, calendar_id, uid, title, description, location,
-                     start_datetime, end_datetime, all_day, False)
-    
     def get_pending_events(self, user_id: str = None) -> List[Event]:
         """Get events that need to be notified"""
         cursor = self.db_connection.cursor()
@@ -101,7 +70,7 @@ class EventEntity(BaseEventEntity):
         
         return updated
     
-    def upsert_event(self, calendar_id: int, uid: str, title: str, description: str,
+    def upsert_event(self, calendar_id: str, uid: str, title: str, description: str,
                      location: str, start_datetime: str, end_datetime: str, all_day: bool):
         """Upsert an event (update if exists, insert if not)"""
         cursor = self.db_connection.cursor()
@@ -126,7 +95,7 @@ class EventEntity(BaseEventEntity):
         
         self.db_connection.commit()
     
-    def delete_events_by_uids(self, calendar_id: int, deleted_uids: set):
+    def delete_events_by_uids(self, calendar_id: str, deleted_uids: set):
         """Delete events by UIDs"""
         if not deleted_uids:
             return

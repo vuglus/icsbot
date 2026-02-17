@@ -2,14 +2,16 @@ import unittest
 import json
 import tempfile
 import os
+import sqlite3
+from unittest.mock import patch, MagicMock
 from flask import Flask
 from flask_smorest import Api
-from services.api_service import initialize_api
-from services.api_utils import AuthService
-from services.database import init_db, set_db_path, set_db_provider
 from services.config_service import Config
-from database_provider import DatabaseProvider
-
+from services.database import Database
+from services.api_utils import AuthService
+from services.calendar_service import CalendarService
+from services.notification_service import NotificationService
+from services.api_endpoints import create_endpoints
 
 class TestCalendarAPI(unittest.TestCase):
     """Test cases for calendar API endpoints"""
@@ -19,17 +21,22 @@ class TestCalendarAPI(unittest.TestCase):
         # Set API key for testing
         os.environ['ICS_GATE_API_KEY'] = 'test-api-key'
         
-        # Create a temporary database for testing
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
-        self.temp_db.close()
-        set_db_path(self.temp_db.name)
-        set_db_provider('sqlite')
+        # Create a temporary database file
+        self.temp_db_file = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db_file.close()
+        
+        # Create config with temporary database
+        config_data = {
+            'api_key': 'test-api-key',
+            'DB_PROVIDER': 'sqlite',
+            'DB_PATH': self.temp_db_file.name,
+            'notify_before_minutes': 10
+        }
+        self.config = Config(config_data)
         
         # Initialize database
-        init_db()
-        config = Config({
-            'api_key': 'test-api-key'
-        })
+        self.database = Database(self.config)
+        
         # Set up Flask app for testing
         self.app = Flask(__name__)
         self.app.config["TESTING"] = True
@@ -37,28 +44,34 @@ class TestCalendarAPI(unittest.TestCase):
         self.app.config["API_VERSION"] = "v1"
         self.app.config["OPENAPI_VERSION"] = "3.0.2"
         
+        # Initialize services
+        self.auth_service = AuthService(self.app, self.config)
+        self.calendar_service = CalendarService(self.database)
+        self.notification_service = NotificationService(self.database)
+        
         # Initialize API endpoints
         api = Api(self.app)
-        # Create a mock auth service for testing
-        class MockAuthService:
-            def validate_api_key(self):
-                return True
-        auth_service = MockAuthService()
-        initialize_api(api, auth_service, config)
+        
+        # Create all endpoints with injected dependencies
+        blueprints = create_endpoints(self.auth_service, self.calendar_service, self.notification_service)
+        
+        # Register blueprints with the API
+        for name, blueprint in blueprints.items():
+            if hasattr(blueprint, 'name') and blueprint.name:
+                api.register_blueprint(blueprint)
         
         # Create test client after full initialization
         self.client = self.app.test_client()
         
-        # Print available endpoints for debugging
-        print(f"Test app has {len(self.app.view_functions)} view functions")
-        for endpoint, view_func in self.app.view_functions.items():
-            print(f"  {endpoint} -> {view_func}")
-        
     def tearDown(self):
         """Tear down test environment"""
-        # Clean up temporary database
-        if os.path.exists(self.temp_db.name):
-            os.unlink(self.temp_db.name)
+        # Close any database connections
+        if hasattr(self.database.provider, '_sqlite_connection') and self.database.provider._sqlite_connection:
+            self.database.provider._sqlite_connection.close()
+        
+        # Clean up temporary database file
+        if os.path.exists(self.temp_db_file.name):
+            os.unlink(self.temp_db_file.name)
             
     def test_create_calendar_success(self):
         """Test successful calendar creation"""
@@ -80,7 +93,6 @@ class TestCalendarAPI(unittest.TestCase):
         data = json.loads(response.data)
         self.assertEqual(data['status'], 'success')
         self.assertIn('calendar', data)
-        # Note: user_id will be an integer now, not a string
         self.assertEqual(data['calendar']['url'], 'https://example.com/calendar.ics')
         
     def test_create_calendar_duplicate(self):
@@ -115,10 +127,7 @@ class TestCalendarAPI(unittest.TestCase):
         self.assertEqual(data1['calendar']['id'], data2['calendar']['id'])
         
         # Check that only one calendar exists in database
-        # We need to access the calendar entity through the provider
-        provider = DatabaseProvider('sqlite', self.temp_db.name)
-        user_entity, calendar_entity, event_entity = provider.get_entities()
-        calendars = calendar_entity.get_calendars()
+        calendars = self.calendar_service.calendars.get_calendars()
         self.assertEqual(len(calendars), 1)
         
     def test_create_calendar_invalid_url(self):
@@ -178,6 +187,53 @@ class TestCalendarAPI(unittest.TestCase):
         data = json.loads(response.data)
         self.assertIn('error', data)
         self.assertEqual(data['error']['code'], 401)
+    
+    def test_sync_calendar_success(self):
+        """Test successful calendar synchronization"""
+        # First create a calendar
+        test_data = {
+            'user_id': 'test_user',
+            'url': 'https://example.com/calendar.ics'
+        }
+        
+        # Create calendar
+        response = self.client.post(
+            '/calendars',
+            json=test_data,
+            headers={'X-API-Key': 'test-api-key'}
+        )
+        
+        # Check that calendar was created
+        self.assertEqual(response.status_code, 201)
+        data = json.loads(response.data)
+        calendar_id = data['calendar']['id']
+        
+        # Mock the sync_calendar_by_id method to return True
+        with patch.object(self.calendar_service, 'sync_calendar_by_id', return_value=True):
+            # Test sync endpoint
+            sync_response = self.client.put(
+                f'/calendars/{calendar_id}/sync',
+                headers={'X-API-Key': 'test-api-key'}
+            )
+            
+            # Check response
+            self.assertEqual(sync_response.status_code, 200)
+            sync_data = json.loads(sync_response.data)
+            self.assertEqual(sync_data['status'], 'success')
+    
+    def test_sync_calendar_not_found(self):
+        """Test syncing a non-existent calendar"""
+        # Test sync endpoint with non-existent calendar ID
+        sync_response = self.client.put(
+            '/calendars/nonexistent/sync',
+            headers={'X-API-Key': 'test-api-key'}
+        )
+        
+        # Check response
+        self.assertEqual(sync_response.status_code, 404)
+        sync_data = json.loads(sync_response.data)
+        self.assertIn('error', sync_data)
+        self.assertEqual(sync_data['error']['code'], 404)
 
 if __name__ == '__main__':
     unittest.main()

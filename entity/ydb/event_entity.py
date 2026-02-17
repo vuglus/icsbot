@@ -1,5 +1,6 @@
 import logging
 import ydb
+import uuid
 from typing import List
 from entity.base import BaseEventEntity, Event, User, Calendar
 from entity.ydb.user_entity import UserEntity
@@ -19,47 +20,15 @@ class EventEntity(BaseEventEntity):
         self.calendar_entity = calendar_entity
         self.notify_before_minutes = notify_before_minutes
     
-    def create_event(self, calendar_id: int, uid: str, title: str, description: str, 
-                     location: str, start_datetime: str, end_datetime: str, all_day: bool) -> Event:
+    def get_calendar_event_by_uid(self, calendar_id: str, uid: str) -> Event: 
         """Create a new event"""
         def callee(session):
-            # Insert the event
-            query = """
-            DECLARE $calendar_id AS Uint64;
-            DECLARE $uid AS Utf8;
-            DECLARE $title AS Utf8;
-            DECLARE $description AS Utf8;
-            DECLARE $location AS Utf8;
-            DECLARE $start_datetime AS Utf8;
-            DECLARE $end_datetime AS Utf8;
-            DECLARE $all_day AS Bool;
-            UPSERT INTO events (calendar_id, uid, title, description, location, 
-                              start_datetime, end_datetime, all_day, notified)
-            VALUES ($calendar_id, $uid, $title, $description, $location, 
-                    $start_datetime, $end_datetime, $all_day, false);
-            """
-            prepared_query = session.prepare(query)
-            session.transaction().execute(
-                prepared_query,
-                parameters={
-                    "$calendar_id": calendar_id,
-                    "$uid": uid,
-                    "$title": title,
-                    "$description": description,
-                    "$location": location,
-                    "$start_datetime": start_datetime,
-                    "$end_datetime": end_datetime,
-                    "$all_day": all_day
-                },
-                commit_tx=True,
-            )
-            
             # Retrieve the created event to get the ID
             query = """
-            DECLARE $calendar_id AS Uint64;
+            DECLARE $calendar_id AS Utf8;
             DECLARE $uid AS Utf8;
             SELECT id, calendar_id, uid, title, description, location, 
-                   start_datetime, end_datetime, all_day, notified
+                    start_datetime, end_datetime, all_day, notified
             FROM events WHERE calendar_id = $calendar_id AND uid = $uid;
             """
             prepared_query = session.prepare(query)
@@ -76,12 +45,11 @@ class EventEntity(BaseEventEntity):
                     row.description, row.location, row.start_datetime,
                     row.end_datetime, row.all_day, row.notified
                 )
-            else:
-                raise Exception("Failed to retrieve created event")
+            
+            return None
         
-        event = self.session_pool.retry_operation_sync(callee)
-        logger.info(f"Created event {event.id} for calendar {calendar_id}")
-        return event
+        return self.session_pool.retry_operation_sync(callee)
+
     
     def get_pending_events(self, user_id: str) -> List[Event]:
         """Get events that need to be notified"""
@@ -135,7 +103,7 @@ class EventEntity(BaseEventEntity):
         def callee(session):
             # Update the event
             query = """
-            DECLARE $id AS Uint64;
+            DECLARE $id AS Utf8;
             UPDATE events SET notified = true WHERE id = $id AND notified = false;
             """
             prepared_query = session.prepare(query)
@@ -147,7 +115,7 @@ class EventEntity(BaseEventEntity):
             
             # Check if the event was updated
             check_query = """
-            DECLARE $id AS Uint64;
+            DECLARE $id AS Utf8;
             SELECT id FROM events WHERE id = $id AND notified = true;
             """
             check_prepared = session.prepare(check_query)
@@ -168,13 +136,16 @@ class EventEntity(BaseEventEntity):
         
         return self.session_pool.retry_operation_sync(callee)
     
-    def upsert_event(self, calendar_id: int, uid: str, title: str, description: str,
+    def upsert_event(self, calendar_id: str, uid: str, title: str, description: str,
                      location: str, start_datetime: str, end_datetime: str, all_day: bool):
         """Upsert an event (update if exists, insert if not)"""
         def callee(session):
+            event = self.get_calendar_event_by_uid(calendar_id, uid)
+            id = event.id if event else uuid.uuid4().hex
             # For YDB, we can use UPSERT which will insert or update
             query = """
-            DECLARE $calendar_id AS Uint64;
+            DECLARE $id AS Utf8;
+            DECLARE $calendar_id AS Utf8;
             DECLARE $uid AS Utf8;
             DECLARE $title AS Utf8;
             DECLARE $description AS Utf8;
@@ -182,15 +153,16 @@ class EventEntity(BaseEventEntity):
             DECLARE $start_datetime AS Utf8;
             DECLARE $end_datetime AS Utf8;
             DECLARE $all_day AS Bool;
-            UPSERT INTO events (calendar_id, uid, title, description, location, 
+            UPSERT INTO events (id, calendar_id, uid, title, description, location, 
                                start_datetime, end_datetime, all_day, notified)
-            VALUES ($calendar_id, $uid, $title, $description, $location, 
+            VALUES ($id, $calendar_id, $uid, $title, $description, $location, 
                     $start_datetime, $end_datetime, $all_day, false);
             """
             prepared_query = session.prepare(query)
             session.transaction().execute(
                 prepared_query,
                 parameters={
+                    "$id": id,
                     "$calendar_id": calendar_id,
                     "$uid": uid,
                     "$title": title,
@@ -205,7 +177,7 @@ class EventEntity(BaseEventEntity):
         
         return self.session_pool.retry_operation_sync(callee)
     
-    def delete_events_by_uids(self, calendar_id: int, deleted_uids: set):
+    def delete_events_by_uids(self, calendar_id: str, deleted_uids: set):
         """Delete events by UIDs"""
         if not deleted_uids:
             return
@@ -214,7 +186,7 @@ class EventEntity(BaseEventEntity):
             # Delete events with specified UIDs for the calendar
             placeholders = ','.join(['?' for _ in deleted_uids])
             query = f"""
-            DECLARE $calendar_id AS Uint64;
+            DECLARE $calendar_id AS Utf8;
             DECLARE $uids AS List<Utf8>;
             DELETE FROM events WHERE calendar_id = $calendar_id AND uid IN $uids;
             """

@@ -123,7 +123,7 @@ class CalendarEntity(BaseCalendarEntity):
         
         return self.session_pool.retry_operation_sync(callee)
     
-    def delete_calendar(self, calendar_id: int, user_id: str = None) -> bool:
+    def delete_calendar(self, calendar_id: str, user_id: str = None) -> bool:
         """Delete a calendar by ID, optionally checking user ownership"""
         def callee(session):
             if user_id:
@@ -203,7 +203,7 @@ class CalendarEntity(BaseCalendarEntity):
         
         return self.session_pool.retry_operation_sync(callee)
     
-    def update_calendar_sync(self, calendar_id: int, sync_hash: str):
+    def update_calendar_sync(self, calendar_id: str, sync_hash: str):
         """Update calendar sync metadata"""
         def callee(session):
             query = """

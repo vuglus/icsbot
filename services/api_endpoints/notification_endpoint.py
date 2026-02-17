@@ -12,7 +12,7 @@ def create_notification_blueprint(auth_service, notification_service):
         url_prefix='/notifications'
     )
 
-    @notification_blp.route('/<int:event_id>/delivered', methods=['POST'])
+    @notification_blp.route('/<string:event_id>/delivered', methods=['POST'])
     @notification_blp.doc(
         summary="Mark notification as delivered",
         description="Marks a notification as delivered",
