@@ -13,11 +13,10 @@ logger = logging.getLogger(__name__)
 class CalendarEntity(BaseCalendarEntity):
     """YDB implementation for calendar-related database operations"""
     
-    def __init__(self, driver, session_pool, database):
+    def __init__(self, driver, session_pool, user_entity):
         self.driver = driver
         self.session_pool = session_pool
-        self.database = database
-        self.user_entity = UserEntity(driver, session_pool, database)
+        self.user_entity = user_entity
     
     def create_calendar(self, user_id: str, url: str) -> Calendar:
         """Create a new calendar for a user"""
@@ -88,7 +87,7 @@ class CalendarEntity(BaseCalendarEntity):
                     raise ValueError(f"User {user_id} not found")
                 
                 query = """
-                DECLARE $user_id AS Uint64;
+                DECLARE $user_id AS Utf8;
                 SELECT id, user_id, url, last_sync_at, sync_hash, timezone FROM calendars 
                 WHERE user_id = $user_id;
                 """
@@ -135,8 +134,8 @@ class CalendarEntity(BaseCalendarEntity):
                 
                 # Delete only if the calendar belongs to this user
                 query = """
-                DECLARE $id AS Uint64;
-                DECLARE $user_id AS Uint64;
+                DECLARE $id AS Utf8;
+                DECLARE $user_id AS Utf8;
                 DELETE FROM calendars WHERE id = $id AND user_id = $user_id;
                 """
                 prepared_query = session.prepare(query)
@@ -148,7 +147,7 @@ class CalendarEntity(BaseCalendarEntity):
             else:
                 # Delete any calendar (admin access)
                 query = """
-                DECLARE $id AS Uint64;
+                DECLARE $id AS Utf8;
                 DELETE FROM calendars WHERE id = $id;
                 """
                 prepared_query = session.prepare(query)
@@ -160,7 +159,7 @@ class CalendarEntity(BaseCalendarEntity):
             
             # YDB doesn't return row count, so we'll check if the calendar exists after deletion
             check_query = """
-            DECLARE $id AS Uint64;
+            DECLARE $id AS Utf8;
             SELECT id FROM calendars WHERE id = $id;
             """
             check_prepared = session.prepare(check_query)
@@ -178,7 +177,7 @@ class CalendarEntity(BaseCalendarEntity):
         """Get a specific calendar by ID"""
         def callee(session):
             query = """
-            DECLARE $id AS Uint64;
+            DECLARE $id AS Utf8;
             SELECT id, user_id, url, last_sync_at, sync_hash, timezone FROM calendars 
             WHERE id = $id;
             """
@@ -208,7 +207,7 @@ class CalendarEntity(BaseCalendarEntity):
         """Update calendar sync metadata"""
         def callee(session):
             query = """
-            DECLARE $id AS Uint64;
+            DECLARE $id AS Utf8;
             DECLARE $sync_hash AS Utf8;
             UPDATE calendars SET last_sync_at = CurrentUtcTimestamp(), sync_hash = $sync_hash 
             WHERE id = $id;
@@ -228,7 +227,7 @@ class CalendarEntity(BaseCalendarEntity):
         """Get existing event UIDs for a calendar"""
         def callee(session):
             query = """
-            DECLARE $calendar_id AS Uint64;
+            DECLARE $calendar_id AS Utf8;
             SELECT uid FROM events WHERE calendar_id = $calendar_id;
             """
             prepared_query = session.prepare(query)

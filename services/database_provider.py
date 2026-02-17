@@ -3,6 +3,7 @@ import sqlite3
 import ydb
 import logging
 from typing import Tuple
+from services.config_service import Config
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -19,9 +20,10 @@ from entity.ydb.event_entity import EventEntity as YdbEventEntity
 class DatabaseProvider:
     """Factory for creating database entity instances based on the configured provider"""
     
-    def __init__(self, db_provider: str, db_path: str):
-        self.db_provider = db_provider
-        self.db_path = db_path
+    def __init__(self, config: Config):
+        self.db_provider = config.getDBProvider()
+        self.db_path = config.getDBPath()
+        self.config = config
         self._sqlite_connection = None
         self._ydb_driver = None
         self._ydb_session_pool = None
@@ -45,7 +47,7 @@ class DatabaseProvider:
         
         user_entity = SqliteUserEntity(self._sqlite_connection)
         calendar_entity = SqliteCalendarEntity(self._sqlite_connection)
-        event_entity = SqliteEventEntity(self._sqlite_connection)
+        event_entity = SqliteEventEntity(self._sqlite_connection, self.config.get_notify_before_minutes())
         
         return user_entity, calendar_entity, event_entity
     
@@ -67,9 +69,9 @@ class DatabaseProvider:
             self._ydb_session_pool = ydb.SessionPool(self._ydb_driver)
             self._ydb_database = self._extract_database_from_path(self.db_path)
         
-        user_entity = YdbUserEntity(self._ydb_driver, self._ydb_session_pool, self._ydb_database)
-        calendar_entity = YdbCalendarEntity(self._ydb_driver, self._ydb_session_pool, self._ydb_database)
-        event_entity = YdbEventEntity(self._ydb_driver, self._ydb_session_pool, self._ydb_database)
+        user_entity = YdbUserEntity(self._ydb_driver, self._ydb_session_pool)
+        calendar_entity = YdbCalendarEntity(self._ydb_driver, self._ydb_session_pool, user_entity)
+        event_entity = YdbEventEntity(self._ydb_driver, self._ydb_session_pool, self.config.get_notify_before_minutes(), user_entity, calendar_entity)
         
         return user_entity, calendar_entity, event_entity
     

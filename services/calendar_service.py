@@ -13,6 +13,14 @@ class CalendarService:
         self.events = self.db.getEvent()
         self.calendars = self.db.getCalendar()
 
+    def create_user(self, user_id: str) -> bool:
+        """Create a new user"""
+        return self.users.create_user(user_id)
+    
+    def create_calendar(self, user_id: str, url: str) -> bool:
+        """Create a new calendar"""
+        return self.calendars.create_calendar(user_id, url)
+
     def sync_all_calendars(self):
         """Sync all calendars"""
         logger.info("Starting calendar synchronization")
@@ -25,8 +33,7 @@ class CalendarService:
                 success_count += 1
         
         logger.info(f"Calendar synchronization complete: {success_count}/{len(calendars)} successful")
-
-
+    
     def sync_calendar(self, calendar: Calendar) -> bool:
         """Sync a single calendar using upsert logic"""
         try:

@@ -12,10 +12,9 @@ logger = logging.getLogger(__name__)
 class UserEntity(BaseUserEntity):
     """YDB implementation for user-related database operations"""
     
-    def __init__(self, driver, session_pool, database):
+    def __init__(self, driver, session_pool):
         self.driver = driver
         self.session_pool = session_pool
-        self.database = database
     
     def create_user(self, user_id: str) -> User:
         """Create a new user"""
@@ -103,43 +102,24 @@ class UserEntity(BaseUserEntity):
 
     
     def get_user_id_by_external_id(self, external_user_id: str) -> int:
-        """Get internal user ID by external user ID"""
-        def callee(session):
-            query = """
-            DECLARE $user_id AS Utf8;
-            SELECT id FROM users WHERE user_id = $user_id;
-            """
-            prepared_query = session.prepare(query)
-            result = session.transaction().execute(
-                prepared_query,
-                parameters={"$user_id": external_user_id},
-                commit_tx=True,
-            )
-            
-            if result[0].rows:
-                return result[0].rows[0].id
-            else:
-                return None
-        
-        return self.session_pool.retry_operation_sync(callee)
+        user = self.get_user_by_external_id(external_user_id)
+        return user.id if user is not None else None
     
     def get_users_with_calendars(self) -> list:
         """Get users who have calendars"""
         def callee(session):
             query = """
-            DECLARE $dummy AS Int32;
-            SELECT DISTINCT u.id, u.user_id, u.created_at
+            SELECT DISTINCT u.id as id, u.user_id as user_id, u.created_at as created_at
             FROM users u
             JOIN calendars c ON u.id = c.user_id;
             """
             prepared_query = session.prepare(query)
             result = session.transaction().execute(
                 prepared_query,
-                parameters={"$dummy": 0},
                 commit_tx=True,
             )
-            
-            return [{'id': row.id, 'user_id': row.user_id, 'created_at': str(row.created_at)} for row in result[0].rows]
+
+            return [User(row.id, row.user_id, row.created_at) for row in result[0].rows]
         
         return self.session_pool.retry_operation_sync(callee)
     
@@ -147,8 +127,7 @@ class UserEntity(BaseUserEntity):
         """Get users who have pending events"""
         def callee(session):
             query = """
-            DECLARE $dummy AS Int32;
-            SELECT DISTINCT u.id, u.user_id, u.created_at
+            SELECT DISTINCT u.id as id, u.user_id as user_id, u.created_at as created_at
             FROM users u
             JOIN calendars c ON u.id = c.user_id
             JOIN events e ON c.id = e.calendar_id
@@ -157,10 +136,9 @@ class UserEntity(BaseUserEntity):
             prepared_query = session.prepare(query)
             result = session.transaction().execute(
                 prepared_query,
-                parameters={"$dummy": 0},
                 commit_tx=True,
             )
             
-            return [{'id': row.id, 'user_id': row.user_id, 'created_at': str(row.created_at)} for row in result[0].rows]
+            return [User(row.id, row.user_id, row.created_at) for row in result[0].rows]
         
         return self.session_pool.retry_operation_sync(callee)

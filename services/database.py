@@ -1,8 +1,10 @@
 import logging
 import urllib.parse
 from services.database_provider import DatabaseProvider
+from services.config_service import Config
 from migrations.migration_manager import MigrationManager
 from entity.base import BaseUserEntity, BaseCalendarEntity, BaseEventEntity
+
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -11,10 +13,11 @@ logger = logging.getLogger(__name__)
 class Database:
     """Database class for managing database connections and migrations"""
     
-    def __init__(self, provider: str, path: str):
-        self.provider_type = provider
-        self.path = path
-        self.provider = DatabaseProvider(provider, path)
+    def __init__(self, config: Config):
+        self.provider_type = config.getDBProvider()
+        self.path = config.getDBPath()
+        self.config = config
+        self.provider = DatabaseProvider(config)
         self._user_entity = None
         self._calendar_entity = None
         self._event_entity = None

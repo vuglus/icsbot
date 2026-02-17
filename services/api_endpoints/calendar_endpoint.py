@@ -2,11 +2,12 @@ import logging
 from flask import request, jsonify
 from marshmallow import Schema, fields
 from services.api_docs import Blueprint
+from ..calendar_service import CalendarService
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-def create_calendar_blueprint(auth_service, calendar_service):
+def create_calendar_blueprint(auth_service, calendar_service: CalendarService):
     calendar_blp = Blueprint('calendars', __name__, url_prefix='/calendars')
 
     # Define schema for query parameters

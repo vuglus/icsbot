@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 class AuthService:
     def __init__(self, app, config: Config):
         self.app = app
-        self.api_key = config.get('api_key')
+        self.api_key = config.getApiKey()
 
     def validate_api_key(self) -> bool:
         """Validate API key from request"""

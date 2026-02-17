@@ -12,10 +12,11 @@ logger = logging.getLogger(__name__)
 class EventEntity(BaseEventEntity):
     """SQLite implementation for event-related database operations"""
     
-    def __init__(self, db_connection):
+    def __init__(self, db_connection, notify_before_minutes: int):
         self.db_connection = db_connection
         self.user_entity = UserEntity(db_connection)
         self.calendar_entity = CalendarEntity(db_connection)
+        self.notify_before_minutes = notify_before_minutes
     
     def create_event(self, calendar_id: int, uid: str, title: str, description: str,
                      location: str, start_datetime: str = None, end_datetime: str = None,
@@ -52,10 +53,6 @@ class EventEntity(BaseEventEntity):
         """Get events that need to be notified"""
         cursor = self.db_connection.cursor()
         
-        # Calculate notification window (default 24 hours before event)
-        from services.config_service import get_notify_before_minutes
-        notify_before_minutes = get_notify_before_minutes()
-        
         cursor.execute('''
             SELECT e.*, u.user_id as user_id, c.timezone as calendar_timezone FROM events e
             JOIN calendars c ON e.calendar_id = c.id
@@ -65,7 +62,7 @@ class EventEntity(BaseEventEntity):
             AND julianday(e.start_datetime) > julianday(datetime('now'))
             AND u.user_id = ?
             ORDER BY e.start_datetime ASC
-        ''', (notify_before_minutes, user_id))        
+        ''', (self.notify_before_minutes, user_id))        
         
         rows = cursor.fetchall()
         

@@ -16,20 +16,26 @@ def load_config(path):
 class Config:
     def __init__(self, config):
         self.config = config
+    
     def get(self, key, default=None):
         return self.config.get(key, default)
-
-
-def get_notify_before_minutes() -> int:
-    """Get notification time before event in minutes from config or environment"""
-    # First check environment variable
-    notify_before_minutes = os.environ.get('NOTIFY_BEFORE_MINUTES')
-    if notify_before_minutes:
-        return int(notify_before_minutes)
     
-    # Then check config file
-    # config = load_config()
-    # Using a placeholder since we don't have access to the config instance here
-    # This function should be refactored to accept the config instance
-    notify_before_minutes = 1440  # Default to 24 hours
-    return int(notify_before_minutes)
+    def getApiKey(self):
+        key = os.environ.get('API_KEY')
+        return key if key else self.config.get('api_key')
+    
+    def getDBProvider(self):        
+        return self.config.get('DB_PROVIDER')
+
+    def getDBPath(self):
+        return self.config.get('DB_PATH')
+
+    def get_notify_before_minutes(self) -> int:
+        """Get notification time before event in minutes from config or environment"""
+        # First check environment variable
+        notify_before_minutes = os.environ.get('NOTIFY_BEFORE_MINUTES')
+        if notify_before_minutes:
+            return int(notify_before_minutes)
+        
+        notify_before_minutes = 1440  # Default to 24 hours
+        return int(notify_before_minutes)

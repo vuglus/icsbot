@@ -12,12 +12,12 @@ logger = logging.getLogger(__name__)
 class EventEntity(BaseEventEntity):
     """YDB implementation for event-related database operations"""
     
-    def __init__(self, driver, session_pool, database):
+    def __init__(self, driver, session_pool, notify_before_minutes: int, user_entity: UserEntity, calendar_entity: CalendarEntity):
         self.driver = driver
         self.session_pool = session_pool
-        self.database = database
-        self.user_entity = UserEntity(driver, session_pool, database)
-        self.calendar_entity = CalendarEntity(driver, session_pool, database)
+        self.user_entity = user_entity
+        self.calendar_entity = calendar_entity
+        self.notify_before_minutes = notify_before_minutes
     
     def create_event(self, calendar_id: int, uid: str, title: str, description: str, 
                      location: str, start_datetime: str, end_datetime: str, all_day: bool) -> Event:
@@ -86,10 +86,6 @@ class EventEntity(BaseEventEntity):
     def get_pending_events(self, user_id: str) -> List[Event]:
         """Get events that need to be notified"""
         def callee(session):
-            # Calculate notification window (default 24 hours before event)
-            from services.config_service import get_notify_before_minutes
-            notify_before_minutes = get_notify_before_minutes()
-            
             # First check if user exists
             user_internal_id = self.user_entity.get_user_id_by_external_id(user_id)
             if not user_internal_id:
@@ -114,7 +110,7 @@ class EventEntity(BaseEventEntity):
                 prepared_query,
                 parameters={
                     "$user_id": user_id,
-                    "$notify_before_minutes": notify_before_minutes
+                    "$notify_before_minutes": self.notify_before_minutes
                 },
                 commit_tx=True,
             )

@@ -18,7 +18,7 @@ class NotificationService:
         users = self.users.get_users_with_calendars()
 
         for user in users:
-            pending_events = self.events.get_pending_events(user.id)
+            pending_events = self.events.get_pending_events(user.user_id)
             logger.info(f"Found {len(pending_events)} pending events")
             # In a real implementation, this would trigger external notifications
             # For now, we just log them

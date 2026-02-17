@@ -30,6 +30,7 @@ workflows:
           IMAGE_NAME: icsbot-image
           YC_SERVERLESS_CONTAINER_NAME: icsbot-container
           YC_SERVICE_ACCOUNT_ID: ${{ tokens.SERVICE_CONNECTION.service_account_id }}
+          API_TOKEN: ${{ secrets.API_TOKEN }}
         cubes:
           # Return IAM-token through outputs.IAM_TOKEN
           - name: get-iam-token

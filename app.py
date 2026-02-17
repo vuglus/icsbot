@@ -25,7 +25,7 @@ app = get_app()
 auth_service = AuthService(app, config)
 
 # Initialize services
-db = get_database(config.get('DB_PROVIDER'), config.get('DB_PATH'))
+db = get_database(config)
 
 calendar_service = CalendarService(db)
 notification_service = NotificationService(db)
