@@ -93,4 +93,8 @@ workflows:
                     echo "Container $YC_SERVERLESS_CONTAINER_NAME already exists"
                 fi
                 
-                yc serverless container revision deploy --container-name $YC_SERVERLESS_CONTAINER_NAME --image $YC_DOCKER_REGISTRY_URI/$IMAGE_NAME:latest --service-account-id $YC_SERVICE_ACCOUNT_ID
+                yc serverless container revision deploy \
+                    --container-name $YC_SERVERLESS_CONTAINER_NAME \
+                    --image $YC_DOCKER_REGISTRY_URI/$IMAGE_NAME:latest \
+                    --service-account-id $YC_SERVICE_ACCOUNT_ID \
+                    --environment-variables DB_PROVIDER=$DB_PROVIDER,DB_ENDPOINT=$DB_ENDPOINT,DB_PATH=$DB_PATH

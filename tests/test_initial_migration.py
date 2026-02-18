@@ -17,7 +17,6 @@ class TestInitialMigration(unittest.TestCase):
         # Create a temporary database file for testing
         self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
         self.temp_db.close()
-        set_db_path(self.temp_db.name)
         
         # Set up logging to see what's happening
         logging.basicConfig(level=logging.INFO)
