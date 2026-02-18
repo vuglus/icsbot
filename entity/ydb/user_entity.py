@@ -12,8 +12,7 @@ logger = logging.getLogger(__name__)
 class UserEntity(BaseUserEntity):
     """YDB implementation for user-related database operations"""
     
-    def __init__(self, driver, session_pool):
-        self.driver = driver
+    def __init__(self, session_pool):
         self.session_pool = session_pool
     
     def create_user(self, user_id: str) -> User:

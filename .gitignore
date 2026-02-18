@@ -6,3 +6,5 @@ icsgate.db
 test.db
 .codeassistant
 .pytest_cache
+.env
+.env_local

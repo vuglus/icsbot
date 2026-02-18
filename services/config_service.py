@@ -16,6 +16,10 @@ def load_config(path):
 class Config:
     def __init__(self, config):
         self.config = config
+
+    def _getAny(self, key: str, default=None) -> str:
+        env = os.environ.get(key);
+        return env if env else self.config.get(key, default)
     
     def get(self, key, default=None):
         return self.config.get(key, default)
@@ -25,17 +29,22 @@ class Config:
         return key if key else self.config.get('api_key')
     
     def getDBProvider(self):        
-        return self.config.get('DB_PROVIDER')
+        return self._getAny('DB_PROVIDER')
 
     def getDBPath(self):
-        return self.config.get('DB_PATH')
+        return self._getAny('DB_PATH')
+
+    def getDBEndpoint(self):
+        return self._getAny('DB_ENDPOINT')
 
     def get_notify_before_minutes(self) -> int:
-        """Get notification time before event in minutes from config or environment"""
-        # First check environment variable
-        notify_before_minutes = os.environ.get('NOTIFY_BEFORE_MINUTES')
-        if notify_before_minutes:
-            return int(notify_before_minutes)
-        
-        notify_before_minutes = 1440  # Default to 24 hours
-        return int(notify_before_minutes)
+        return int(self._getAny('NOTIFY_BEFORE_MINUTES', 15))
+
+    def get_sync_interval(self) -> int:
+        return self._getAny('SYNC_INTERVAL_MINUTES', 30)
+    
+    def get_notify_interval(self) -> int:
+        return self._getAny('NOTIFY_INTERVAL_SECONDS', 60)
+    
+    def getTZone(self) -> str:
+        return self._getAny('TIMEZONE_DEFAULT', 'UTC')

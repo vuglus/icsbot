@@ -1,15 +1,36 @@
 services:
+  ydb-local:
+    image: ydbplatform/local-ydb:latest
+    container_name: ydb-local
+    platform: linux/amd64
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "2135:2135"
+      - "2136:2136"
+      - "8765:8765"
+      - "9092:9092"
+
+    volumes:
+      - "${YDB_CERTS_PATH}"
+      - "${YDB_DATA_PATH}" 
+
+    networks:
+      - ydbnet
+    environment:
+      GRPC_TLS_PORT: "2135"
+      GRPC_PORT: "2136"
+      MON_PORT: "8765"
+      YDB_KAFKA_PROXY_PORT: "9092"
   ics-gate:
+    env_file:
+      - .env
     build: .
     container_name: ics-gate
     ports:
       - "5800:5800"
-    environment:
-      - CONFIG_PATH=/config/config.yml
-      - DB_PATH=/data/icsgate.db
-      - TIMEZONE_DEFAULT=UTC
     volumes:
-      - ./data:/data         # папка для БД
       - ./config:/config:ro  # папка конфига
     restart: unless-stopped
     healthcheck:
@@ -18,3 +39,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - ydbnet
+
+networks:
+  ydbnet:
+    driver: bridge

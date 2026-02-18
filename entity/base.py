@@ -67,6 +67,14 @@ class BaseMigrationEntity(abc.ABC):
     def is_migration_executed(self, name: str) -> bool:
         """Check if a migration has been executed"""
         pass
+    @abc.abstractmethod
+    def migration_table_exists(self) -> bool: 
+        pass
+    
+    @abc.abstractmethod
+    def execute(self, queries: List): 
+        """Execute migrations"""
+        pass
 
 
 class BaseUserEntity(abc.ABC):

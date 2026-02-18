@@ -13,8 +13,7 @@ logger = logging.getLogger(__name__)
 class CalendarEntity(BaseCalendarEntity):
     """YDB implementation for calendar-related database operations"""
     
-    def __init__(self, driver, session_pool, user_entity):
-        self.driver = driver
+    def __init__(self, session_pool, user_entity):
         self.session_pool = session_pool
         self.user_entity = user_entity
     

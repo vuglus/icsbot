@@ -32,8 +32,10 @@ WORKDIR /home/app/ics-gate
 EXPOSE 5800
 
 # Environment variables
-ENV DB_PATH=/data/icsgate.db
-ENV CONFIG_PATH=/config/config.yml
+ENV DB_PROVIDER=ydb
+ENV DB_ENDPOINT=ydb-local:2136
+ENV DB_PATH=/local
+
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

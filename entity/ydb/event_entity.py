@@ -14,8 +14,7 @@ logger = logging.getLogger(__name__)
 class EventEntity(BaseEventEntity):
     """YDB implementation for event-related database operations"""
     
-    def __init__(self, driver, session_pool, notify_before_minutes: int, user_entity: UserEntity, calendar_entity: CalendarEntity):
-        self.driver = driver
+    def __init__(self, session_pool, notify_before_minutes: int, user_entity: UserEntity, calendar_entity: CalendarEntity):
         self.session_pool = session_pool
         self.user_entity = user_entity
         self.calendar_entity = calendar_entity

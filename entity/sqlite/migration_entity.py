@@ -79,3 +79,15 @@ class MigrationEntity(BaseMigrationEntity):
             return False
         finally:
             cursor.close()
+
+    def execute(self, queries):
+        cursor = self.db_connection.cursor()
+        try:
+            cursor.execute('SELECT 1 FROM migrations WHERE name = ?', (name,))
+            return cursor.fetchone() is not None
+        except Exception as e:
+            logger.error(f"Error checking if migration {name} is executed: {e}")
+            return False
+        finally:
+            cursor.close()
+        

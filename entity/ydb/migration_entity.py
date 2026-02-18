@@ -12,10 +12,8 @@ logger = logging.getLogger(__name__)
 class MigrationEntity(BaseMigrationEntity):
     """YDB implementation for migration-related database operations"""
     
-    def __init__(self, driver, session_pool, database):
-        self.driver = driver
-        self.session_pool = session_pool
-        self.database = database
+    def __init__(self, session):
+        self.session = session
     
     def create_migration_table(self):
         """Create the migrations table"""
@@ -29,7 +27,7 @@ class MigrationEntity(BaseMigrationEntity):
                     PRIMARY KEY (id)
                 )
                 """
-                session.execute_scheme(query)
+                session.execute(query)
                 logger.info("Migrations table created")
             except Exception as e:
                 # Check if table already exists
@@ -39,7 +37,7 @@ class MigrationEntity(BaseMigrationEntity):
                     logger.error(f"Error creating migrations table: {e}")
                     raise
         
-        return self.session_pool.retry_operation_sync(callee)
+        return self.session.retry_operation_sync(callee)
     
     def get_executed_migrations(self) -> List[Migration]:
         """Get list of executed migrations"""
@@ -65,7 +63,7 @@ class MigrationEntity(BaseMigrationEntity):
                 logger.error(f"Error getting executed migrations: {e}")
                 return []
         
-        return self.session_pool.retry_operation_sync(callee)
+        return self.session.retry_operation_sync(callee)
     
     def record_migration(self, name: str):
         """Record a migration as executed"""
@@ -93,7 +91,7 @@ class MigrationEntity(BaseMigrationEntity):
                 logger.error(f"Error recording migration {name}: {e}")
                 raise
         
-        return self.session_pool.retry_operation_sync(callee)
+        return self.session.retry_operation_sync(callee)
     
     def is_migration_executed(self, name: str) -> bool:
         """Check if a migration has been executed"""
@@ -115,4 +113,26 @@ class MigrationEntity(BaseMigrationEntity):
                 logger.error(f"Error checking if migration {name} is executed: {e}")
                 return False
         
-        return self.session_pool.retry_operation_sync(callee)
+        return self.session.retry_operation_sync(callee)
+    
+    def migration_table_exists(self) -> bool: 
+        def callee(session):
+            try:
+                session.describe_table("migrations")
+                return True
+            except ydb.SchemeError:
+                return False
+
+        return self.session.retry_operation_sync(callee)
+
+    def execute(self, queries: List): 
+        def callee(session):
+            try:
+                for query in queries: 
+                    logger.info(f"executing migration: {query}")
+                    session.execute_scheme(query)
+            except Exception as e:
+                logger.error(f"Error executing migration {query}: {e}")
+                raise
+
+        return self.session.retry_operation_sync(callee)

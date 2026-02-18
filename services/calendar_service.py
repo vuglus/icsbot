@@ -7,11 +7,12 @@ from services.ics_parser import download_ics_content, calculate_content_hash, pa
 logger = logging.getLogger(__name__)
 
 class CalendarService:
-    def __init__(self, database: Database):
+    def __init__(self, database: Database, tzone: str = None):
         self.db = database
         self.users = self.db.getUser()
         self.events = self.db.getEvent()
         self.calendars = self.db.getCalendar()
+        self.tzone = tzone
 
     def create_user(self, user_id: str) -> bool:
         """Create a new user"""
@@ -55,7 +56,7 @@ class CalendarService:
                 return True
             
             # Parse events
-            events = parse_ics_content(ics_content)
+            events = parse_ics_content(ics_content, self.tzone)
             
             # Get existing event UIDs for this calendar
             existing_uids = self.calendars.get_existing_event_uids(calendar.id)

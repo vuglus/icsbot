@@ -125,7 +125,6 @@ Returns the health status of the service.
 - `SYNC_INTERVAL_MINUTES`: ICS synchronization frequency (default: 15)
 - `NOTIFY_INTERVAL_SECONDS`: Notification check frequency (default: 60)
 - `DB_PATH`: Path to SQLite database (default: ./icsgate.db)
-- `CONFIG_PATH`: Path to YAML configuration file (default: ./config.yml)
 - `TIMEZONE_DEFAULT`: Default timezone (default: UTC)
 
 ## Development

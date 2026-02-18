@@ -6,13 +6,11 @@ from services.notification_service import NotificationService
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Global variables
-SYNC_INTERVAL_MINUTES = None  # This will be set from the main app
-NOTIFY_INTERVAL_SECONDS = None  # This will be set from the main app
-
 def start_background_processes(
         calendarService: CalendarService,
-        notificationService: NotificationService
+        notificationService: NotificationService,
+        syncInterval: int,
+        notifyInterval: int
 ):
     """Start background processes"""
     scheduler = BackgroundScheduler()
@@ -21,7 +19,7 @@ def start_background_processes(
     scheduler.add_job(
         calendarService.sync_all_calendars,
         'interval',
-        minutes=SYNC_INTERVAL_MINUTES,
+        minutes=notifyInterval,
         id='ics_sync'
     )
     
@@ -29,7 +27,7 @@ def start_background_processes(
     scheduler.add_job(
         notificationService.check_pending_notifications,
         'interval',
-        seconds=NOTIFY_INTERVAL_SECONDS,
+        seconds=notifyInterval,
         id='notification_check'
     )
     

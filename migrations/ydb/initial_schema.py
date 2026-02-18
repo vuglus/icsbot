@@ -1,5 +1,6 @@
 from migrations.ydb.base import YdbMigration
 import logging
+from entity.base import BaseMigrationEntity
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -8,23 +9,22 @@ logger = logging.getLogger(__name__)
 class InitialSchemaMigration(YdbMigration):
     """Initialize the database with required tables"""
     
-    def run(self, session):
+    def run(self, entity: BaseMigrationEntity):
         """Run the migration using the provided YDB session"""
         logger.info("Starting initial_schema migration")
         
         try:
             # Create users table
-            session.execute_scheme('''
-                CREATE TABLE users (
-                    id Utf8,
-                    user_id Utf8,
-                    created_at Timestamp,
-                    PRIMARY KEY (id)
-                )
-            ''')
-            
-            # Create calendars table
-            session.execute_scheme('''
+            entity.execute([
+                '''
+                    CREATE TABLE users (
+                        id Utf8,
+                        user_id Utf8,
+                        created_at Timestamp,
+                        PRIMARY KEY (id)
+                    );
+                ''',
+                '''
                 CREATE TABLE calendars (
                     id Utf8,
                     user_id Utf8,
@@ -34,12 +34,9 @@ class InitialSchemaMigration(YdbMigration):
                     timezone Utf8,
                     created_at Timestamp,
                     PRIMARY KEY (id)
-                )
-            ''')
-            
-            # Create events table
-            session.execute_scheme('''
-                CREATE TABLE events (
+                );
+                ''',
+                '''CREATE TABLE events (
                     id Utf8,
                     calendar_id Utf8,
                     uid Utf8,
@@ -52,21 +49,9 @@ class InitialSchemaMigration(YdbMigration):
                     notified Bool,
                     created_at Timestamp,
                     PRIMARY KEY (id)
-                )
-            ''')
-            
-            # Create migrations table
-            session.execute_scheme('''
-                CREATE TABLE migrations (
-                    id Utf8,
-                    name Utf8,
-                    executed_at Timestamp,
-                    PRIMARY KEY (id)
-                )
-            ''')
-                        
-            # Create indexes
-            # Note: YDB handles some indexing automatically, but we can create additional indexes if needed
+                );
+                ''',
+            ])
             
             logger.info("Completed initial_schema migration")
             

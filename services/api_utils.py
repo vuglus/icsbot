@@ -21,6 +21,4 @@ class AuthService:
         
         # Validate against environment variable or config
         expected_key = self.api_key
-        logger.error(f"Expected key: {expected_key}, received key: {api_key}")
-
         return api_key == expected_key

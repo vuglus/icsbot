@@ -1,5 +1,7 @@
 from migrations.sqlite.base import SqliteMigration
 import logging
+from entity.base import BaseMigrationEntity
+
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -8,15 +10,13 @@ logger = logging.getLogger(__name__)
 class InitialSchemaMigration(SqliteMigration):
     """Initialize the database with required tables"""
     
-    def run(self, connection):
+    def run(self, entity: BaseMigrationEntity):
         """Run the migration using the provided SQLite connection"""
         logger.info("Starting initial_schema migration")
         
-        cursor = connection.cursor()
-        
         try:
             # Create users table
-            cursor.execute('''
+            entity.execute('''
                 CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id TEXT UNIQUE NOT NULL,
@@ -25,7 +25,7 @@ class InitialSchemaMigration(SqliteMigration):
             ''')
             
             # Create calendars table
-            cursor.execute('''
+            entity.execute('''
                 CREATE TABLE IF NOT EXISTS calendars (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL,
@@ -40,7 +40,7 @@ class InitialSchemaMigration(SqliteMigration):
             ''')
             
             # Create events table
-            cursor.execute('''
+            entity.execute('''
                 CREATE TABLE IF NOT EXISTS events (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     calendar_id INTEGER NOT NULL,
@@ -59,19 +59,17 @@ class InitialSchemaMigration(SqliteMigration):
             ''')
             
             # Create indexes
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_calendars_user_id ON calendars (user_id)')
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_events_calendar_id ON events (calendar_id)')
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_events_start_datetime ON events (start_datetime)')
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_events_notified ON events (notified)')
+            entity.execute('CREATE INDEX IF NOT EXISTS idx_calendars_user_id ON calendars (user_id)')
+            entity.execute('CREATE INDEX IF NOT EXISTS idx_events_calendar_id ON events (calendar_id)')
+            entity.execute('CREATE INDEX IF NOT EXISTS idx_events_start_datetime ON events (start_datetime)')
+            entity.execute('CREATE INDEX IF NOT EXISTS idx_events_notified ON events (notified)')
             
-            connection.commit()
+            entity.commit()
             logger.info("Completed initial_schema migration")
             
         except Exception as e:
-            connection.rollback()
+            entity.rollback()
             logger.error(f"Error during initial_schema migration: {e}")
             raise
-        finally:
-            cursor.close()
         
         logger.info("Completed initial_schema migration")

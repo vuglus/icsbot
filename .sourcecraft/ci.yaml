@@ -31,6 +31,9 @@ workflows:
           YC_SERVERLESS_CONTAINER_NAME: icsbot-container
           YC_SERVICE_ACCOUNT_ID: ${{ tokens.SERVICE_CONNECTION.service_account_id }}
           API_TOKEN: ${{ secrets.API_TOKEN }}
+          DB_PROVIDER: ydb
+          DB_ENDPOINT: ${{ secrets.DB_ENDPOINT }}
+          DB_PATH: ${{ secrets.DB_PATH }}
         cubes:
           # Return IAM-token through outputs.IAM_TOKEN
           - name: get-iam-token
