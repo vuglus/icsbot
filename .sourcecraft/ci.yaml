@@ -30,7 +30,7 @@ workflows:
           IMAGE_NAME: icsbot-image
           YC_SERVERLESS_CONTAINER_NAME: icsbot-container
           YC_SERVICE_ACCOUNT_ID: ${{ tokens.SERVICE_CONNECTION.service_account_id }}
-          API_TOKEN: ${{ secrets.API_TOKEN }}
+          API_KEY: ${{ secrets.API_KEY }}
           DB_PROVIDER: ydb
           DB_ENDPOINT: ${{ secrets.DB_ENDPOINT }}
           DB_PATH: ${{ secrets.DB_PATH }}
@@ -93,4 +93,4 @@ workflows:
                   --container-name $YC_SERVERLESS_CONTAINER_NAME \
                   --image $YC_DOCKER_REGISTRY_URI/$IMAGE_NAME:latest \
                   --service-account-id $YC_SERVICE_ACCOUNT_ID \
-                  --environment API_TOKEN=$API_TOKEN,DB_PROVIDER=$DB_PROVIDER,DB_ENDPOINT=$DB_ENDPOINT,DB_PATH=$DB_PATH
+                  --environment API_KEY=$API_KEY,DB_PROVIDER=$DB_PROVIDER,DB_ENDPOINT=$DB_ENDPOINT,DB_PATH=$DB_PATH
