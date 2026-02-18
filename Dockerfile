@@ -28,18 +28,18 @@ COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python
 COPY . ./ics-gate
 WORKDIR /home/app/ics-gate
 
-# Expose port
-EXPOSE 5800
-
 # Environment variables
 ENV DB_PROVIDER=ydb
 ENV DB_ENDPOINT=ydb-local:2136
 ENV DB_PATH=/local
+ENV PORT=8080
+# Expose port
+EXPOSE ${PORT}
 
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5800/health || exit 1
+    CMD curl -f http://localhost:${PORT}/health || exit 1
 
 # Run application
 ENTRYPOINT ["python", "app.py"]
