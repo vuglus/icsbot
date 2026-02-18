@@ -45,7 +45,8 @@ class DatabaseProvider:
                 # Create YDB driver
                 self._ydb_driver = ydb.Driver(
                     endpoint=self.db_endpoint,
-                    database=self.db_path
+                    database=self.db_path,
+                    credentials=ydb.credentials_from_env_variables()
                 )
                 
                 # Wait for driver to become ready
