@@ -93,4 +93,4 @@ workflows:
                   --container-name $YC_SERVERLESS_CONTAINER_NAME \
                   --image $YC_DOCKER_REGISTRY_URI/$IMAGE_NAME:latest \
                   --service-account-id $YC_SERVICE_ACCOUNT_ID \
-                  --environment-variables DB_PROVIDER=$DB_PROVIDER,DB_ENDPOINT=$DB_ENDPOINT,DB_PATH=$DB_PATH
+                  --environment API_TOKEN=$API_TOKEN,DB_PROVIDER=$DB_PROVIDER,DB_ENDPOINT=$DB_ENDPOINT,DB_PATH=$DB_PATH
