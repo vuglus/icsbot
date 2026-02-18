@@ -2,11 +2,11 @@ on:
   push:
     - workflows: [test-only, deploy-to-serverless]
       filter:
-        - branches: [ycloud]
+        branches: [ycloud]
   pull_request:
     - workflows: [test-only]
       filter:
-        - branches: [ycloud]
+        branches: [ycloud]
 
 tokens:
   SERVICE_CONNECTION:
