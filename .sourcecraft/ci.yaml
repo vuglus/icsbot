@@ -1,12 +1,12 @@
 on:
   push:
-    - workflows: [test-only, deploy-to-serverless]
+    - workflows: [deploy-to-serverless]
       filter:
         branches: [ycloud]
-  pull_request:
-    - workflows: [test-only]
-      filter:
-        branches: [ycloud]
+  # pull_request:
+  #   - workflows: [test-only]
+  #     filter:
+  #       target_branches: [ycloud]
 
 tokens:
   SERVICE_CONNECTION:
@@ -14,14 +14,14 @@ tokens:
     scope: org
 
 workflows:
-  test-only:
-    tasks:
-      - name: setup-and-test
-        image: cr.yandex/mirror/library/python:3.13.2-slim
-        script:
-          - python -m pip install --upgrade pip
-          - if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          - pytest -q
+  # test-only:
+  #   tasks:
+  #     - name: setup-and-test
+  #       image: cr.yandex/mirror/library/python:3.13.2-slim
+  #       script:
+  #         - python -m pip install --upgrade pip
+  #         - if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+  #         - pytest -q
   deploy-to-serverless:
     tasks:
       - name: deploy-task
@@ -57,7 +57,7 @@ workflows:
               platforms: linux/amd64
               tags: |
                 cr.yandex/crpnegsi3mo0h8rm5k1p/icsbot-image:latest
-              push: true
+              push: "true"
       
           # Example of usage with Yandex Cloud CLI
           - name: yc-cli-deploy
