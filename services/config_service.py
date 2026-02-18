@@ -48,3 +48,6 @@ class Config:
     
     def getTZone(self) -> str:
         return self._getAny('TIMEZONE_DEFAULT', 'UTC')
+
+    def get_port(self) -> str:
+        return self._getAny('EXT_PORT', '8080')

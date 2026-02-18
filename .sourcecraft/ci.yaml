@@ -34,7 +34,7 @@ workflows:
           DB_PROVIDER: ydb
           DB_ENDPOINT: ${{ secrets.DB_ENDPOINT }}
           DB_PATH: ${{ secrets.DB_PATH }}
-          PORT: ${{ secrets.PORT }}
+          EXT_PORT: ${{ secrets.EXT_PORT }}
         cubes:
           # Return IAM-token through outputs.IAM_TOKEN
           - name: get-iam-token
@@ -94,4 +94,4 @@ workflows:
                   --container-name $YC_SERVERLESS_CONTAINER_NAME \
                   --image $YC_DOCKER_REGISTRY_URI/$IMAGE_NAME:latest \
                   --service-account-id $YC_SERVICE_ACCOUNT_ID \
-                  --environment PORT=$PORT,API_KEY=$API_KEY,DB_PROVIDER=$DB_PROVIDER,DB_ENDPOINT=$DB_ENDPOINT,DB_PATH=$DB_PATH
+                  --environment EXT_PORT=$EXT_PORT,API_KEY=$API_KEY,DB_PROVIDER=$DB_PROVIDER,DB_ENDPOINT=$DB_ENDPOINT,DB_PATH=$DB_PATH
