@@ -42,10 +42,6 @@ workflows:
               YC_SA_ID: ${{ tokens.SERVICE_CONNECTION.service_account_id }}
             image: cr.yandex/sourcecraft/yc-iam:latest
 
-          # Example of usage GitHub Actions
-          - name: setup-buildx
-            action: docker/setup-buildx-action@v3.11.1
-
           - name: login
             action: docker/login-action@v3.5.0
             with:
@@ -94,7 +90,7 @@ workflows:
                 fi
                 
                 yc serverless container revision deploy \
-                    --container-name $YC_SERVERLESS_CONTAINER_NAME \
-                    --image $YC_DOCKER_REGISTRY_URI/$IMAGE_NAME:latest \
-                    --service-account-id $YC_SERVICE_ACCOUNT_ID \
-                    --environment-variables DB_PROVIDER=$DB_PROVIDER,DB_ENDPOINT=$DB_ENDPOINT,DB_PATH=$DB_PATH
+                  --container-name $YC_SERVERLESS_CONTAINER_NAME \
+                  --image $YC_DOCKER_REGISTRY_URI/$IMAGE_NAME:latest \
+                  --service-account-id $YC_SERVICE_ACCOUNT_ID \
+                  --environment-variables DB_PROVIDER=$DB_PROVIDER,DB_ENDPOINT=$DB_ENDPOINT,DB_PATH=$DB_PATH
