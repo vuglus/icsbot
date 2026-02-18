@@ -34,7 +34,7 @@ workflows:
           DB_PROVIDER: ydb
           DB_ENDPOINT: ${{ secrets.DB_ENDPOINT }}
           DB_PATH: ${{ secrets.DB_PATH }}
-          PORT: ${{ PORT }}
+          PORT: ${{ secrets.PORT }}
         cubes:
           # Return IAM-token through outputs.IAM_TOKEN
           - name: get-iam-token
