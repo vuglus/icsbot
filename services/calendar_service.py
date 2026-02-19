@@ -2,9 +2,8 @@ import logging
 from entity.base import Calendar
 from services.database import Database
 from services.ics_parser import download_ics_content, calculate_content_hash, parse_ics_content
-
-# Configure logging
 logger = logging.getLogger(__name__)
+logger.info("Starting calendar synchronization")
 
 class CalendarService:
     def __init__(self, database: Database, tzone: str = None):
@@ -75,6 +74,7 @@ class CalendarService:
                     event_data['location'], event_data['start'], event_data['end'],
                     event_data['all_day']
                 )
+                logger.info(f"Upserted event {uid} for calendar {calendar.id}")
             
             # Delete events that no longer exist in the calendar
             deleted_uids = existing_uids - updated_uids

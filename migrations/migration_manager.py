@@ -12,6 +12,7 @@ from migrations.sqlite.initial_schema import InitialSchemaMigration as SqliteIni
 from migrations.sqlite.remove_calendar_duplicates import RemoveCalendarDuplicatesMigration as SqliteRemoveCalendarDuplicatesMigration
 
 from migrations.ydb.m20260218_migration_table import m20260218_migration_table
+from migrations.ydb.m20260219_events_index import m20260219_events_index
 from migrations.ydb.initial_schema import InitialSchemaMigration as YdbInitialSchemaMigration
 
 class Migration:
@@ -71,6 +72,7 @@ class MigrationManager:
             elif self.provider == "ydb":
                 migrations = [
                     ("initial_schema", YdbInitialSchemaMigration()),
+                    ("m20260219_events_index", m20260219_events_index())
                 ]
             # Run migrations in order
             for name, migration_instance in migrations:

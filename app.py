@@ -1,8 +1,7 @@
-import os
 import logging
 from flask import Flask
 from flask_smorest import Api
-from services.config_service import load_config, Config
+from services.config_service import Config
 from services.api_service import get_app, initialize_api
 from services.init_service import get_database
 from services.api_utils import AuthService

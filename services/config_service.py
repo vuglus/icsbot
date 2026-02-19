@@ -8,11 +8,6 @@ logger = logging.getLogger(__name__)
 
 # Global variables
 
-# Load configuration from YAML file
-def load_config(path):
-    with open(path, 'r', encoding='utf-8') as f:
-        return yaml.safe_load(f)
-
 class Config:
     def __init__(self, config):
         self.config = config
