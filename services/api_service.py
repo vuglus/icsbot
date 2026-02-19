@@ -24,7 +24,11 @@ def initialize_api(
     from .api_endpoints import create_endpoints
     
     # Create all endpoints with injected dependencies
-    blueprints = create_endpoints(auth_service, calendar_service, notification_service)
+    blueprints = create_endpoints(
+        auth_service, 
+        calendar_service, 
+        notification_service
+    )
     
     # Register blueprints with the API
     for name, blueprint in blueprints.items():
