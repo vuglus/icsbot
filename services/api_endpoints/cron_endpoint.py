@@ -20,6 +20,7 @@ def handle_cron_blueprint(auth_service: AuthService, calendar_service: CalendarS
     @calendar_blp.response(201, description="Job executed successfully")
     def handle_cron_api():
         print(request.json)
+        logger.info(request.get_data())
         if not auth_service.validate_api_key():
             return jsonify({'error': {'code': 401, 'message': 'Unauthorized'}}), 401
         
