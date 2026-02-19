@@ -14,6 +14,8 @@ class AuthService:
         """Validate API key from request"""
         # Check header first
         api_key = request.headers.get('X-API-Key')
+        data = request.get_json(silent=True) or {}
+        api_key =  api_key if api_key else data.get('api_key')
         
         # Check query parameter if header not found
         if not api_key:

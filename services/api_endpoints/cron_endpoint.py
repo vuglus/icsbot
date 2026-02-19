@@ -3,11 +3,12 @@ from flask import request, jsonify
 from marshmallow import Schema, fields
 from services.api_docs import Blueprint
 from ..calendar_service import CalendarService
+from ..api_service import AuthService
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-def handle_cron_blueprint(auth_service, calendar_service: CalendarService):
+def handle_cron_blueprint(auth_service: AuthService, calendar_service: CalendarService):
     calendar_blp = Blueprint('cron', __name__, url_prefix='/')
 
     @calendar_blp.route('', methods=['POST'])
@@ -22,8 +23,9 @@ def handle_cron_blueprint(auth_service, calendar_service: CalendarService):
             return jsonify({'error': {'code': 401, 'message': 'Unauthorized'}}), 401
         
         try:
-            
+
             print(request.json)
+            calendar_service.sync_all_calendars()
 
             # Return success response
             return jsonify({
