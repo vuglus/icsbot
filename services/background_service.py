@@ -19,7 +19,7 @@ def start_background_processes(
     scheduler.add_job(
         calendarService.sync_all_calendars,
         'interval',
-        minutes=notifyInterval,
+        minutes=syncInterval,
         id='ics_sync'
     )
     

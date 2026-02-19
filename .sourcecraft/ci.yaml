@@ -94,4 +94,6 @@ workflows:
                   --container-name $YC_SERVERLESS_CONTAINER_NAME \
                   --image $YC_DOCKER_REGISTRY_URI/$IMAGE_NAME:latest \
                   --service-account-id $YC_SERVICE_ACCOUNT_ID \
-                  --environment EXT_PORT=$EXT_PORT,API_KEY=$API_KEY,DB_PROVIDER=$DB_PROVIDER,DB_ENDPOINT=$DB_ENDPOINT,DB_PATH=$DB_PATH
+                  --environment EXT_PORT=$EXT_PORT,API_KEY=$API_KEY,DB_PROVIDER=$DB_PROVIDER,DB_ENDPOINT=$DB_ENDPOINT,DB_PATH=$DB_PATH \
+                  --memory 1GB \
+                  --execution-timeout 5m

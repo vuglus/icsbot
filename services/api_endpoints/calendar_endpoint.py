@@ -173,4 +173,35 @@ def create_calendar_blueprint(auth_service, calendar_service: CalendarService):
             logger.error(f"Error synchronizing calendar {calendar_id}: {e}")
             return jsonify({'error': {'code': 500, 'message': 'Internal Server Error'}}), 500
 
+
+    @calendar_blp.route('/sync', methods=['PUT'])
+    @calendar_blp.doc(
+        summary="Force calendar synchronization for all calendars",
+        description="Triggers immediate synchronization",
+        security=[{"ApiKeyAuth": []}]
+    )
+    def sync_all_calendar_api():
+        """Force synchronization for all calendars """
+        if not auth_service.validate_api_key():
+            return jsonify({'error': {'code': 401, 'message': 'Unauthorized'}}), 401
+        
+        try:
+            # Force synchronization
+            success = calendar_service.sync_all_calendars()
+            
+            if success:
+                return jsonify({
+                    'status': 'success',
+                    'message': 'Calendar synchronization completed successfully'
+                })
+            else:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Calendar synchronization failed'
+                }), 500
+                    
+        except Exception as e:
+            logger.error(f"Error synchronizing calendar {calendar_id}: {e}")
+            return jsonify({'error': {'code': 500, 'message': 'Internal Server Error'}}), 500
+
     return calendar_blp

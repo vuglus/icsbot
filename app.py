@@ -7,7 +7,6 @@ from services.init_service import get_database
 from services.api_utils import AuthService
 from services.calendar_service import CalendarService
 from services.notification_service import NotificationService
-from services.background_service import start_background_processes
 
 # Configure logging
 logging.basicConfig(
@@ -42,23 +41,16 @@ api = Api(app)
 # Initialize API endpoints
 initialize_api(api, auth_service, calendar_service, notification_service)
 
+
+def handler(event, context):
+    print("Получен event:", event)
+    calendar_service.sync_all_calendars()
+    return {
+        'statusCode': 200,
+        'body': '{"message": "Запрос обработан триггером"}'
+    }
+
 if __name__ == '__main__':
-    # Create users and calendars from config
-    if config.get('calendars'):
-        for user_id, calendar_url in config.get('calendars').items():
-            user = db.getUser().create_user(user_id)
-            db.getCalendar().create_calendar(user.id, calendar_url)
-    # Import background service after setting up entities to avoid circular imports
-    
-    # Start background processes
-    scheduler = start_background_processes(
-        calendar_service,
-        notification_service,
-        int(config.get_sync_interval()),
-        int(config.get_notify_interval())
-    )
-    
-    logger.info("ICS-Gate application initialized successfully")
-    
+    logger.info("ICS-Gate application initialized successfully")    
     # Run Flask app
     app.run(host='0.0.0.0', port=config.get_port() , debug=False)

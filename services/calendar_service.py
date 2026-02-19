@@ -37,6 +37,8 @@ class CalendarService:
                 success_count += 1
         
         logger.info(f"Calendar synchronization complete: {success_count}/{len(calendars)} successful")
+
+        return success_count == len(calendars)
     
     def sync_calendar(self, calendar: Calendar) -> bool:
         """Sync a single calendar using upsert logic"""
