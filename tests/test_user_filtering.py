@@ -1,8 +1,9 @@
 import unittest
 import tempfile
 import os
-from services.database import init_db, set_db_path, set_db_provider
-from database_provider import DatabaseProvider
+from services.database import Database
+from services.database_provider import DatabaseProvider
+from services.config_service import Config
 
 
 class TestUserFiltering(unittest.TestCase):
@@ -13,11 +14,6 @@ class TestUserFiltering(unittest.TestCase):
         # Create a temporary database for testing
         self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
         self.temp_db.close()
-        set_db_path(self.temp_db.name)
-        set_db_provider('sqlite')
-        
-        # Initialize database
-        init_db()
         
     def tearDown(self):
         """Tear down test environment"""
@@ -27,9 +23,17 @@ class TestUserFiltering(unittest.TestCase):
             
     def test_get_users_with_calendars(self):
         """Test getting users with calendars"""
+        config = Config({
+            'DB_PROVIDER': 'sqlite',
+            'DB_PATH': self.temp_db.name,
+        })
+        
+        # Initialize the database
+        provider = DatabaseProvider(config)
+        db = Database(provider, config)
+        
         # Initialize entities through the provider
-        provider = DatabaseProvider('sqlite', self.temp_db.name)
-        user_entity, calendar_entity, event_entity = provider.get_entities()
+        user_entity, calendar_entity, event_entity, _ = provider.get_entities()
         
         # Create users
         user1 = user_entity.create_user('user1@example.com')
@@ -53,9 +57,17 @@ class TestUserFiltering(unittest.TestCase):
         
     def test_get_users_with_pending_events(self):
         """Test getting users with pending events"""
+        config = Config({
+            'DB_PROVIDER': 'sqlite',
+            'DB_PATH': self.temp_db.name,
+        })
+        
+        # Initialize the database
+        provider = DatabaseProvider(config)
+        db = Database(provider, config)
+        
         # Initialize entities through the provider
-        provider = DatabaseProvider('sqlite', self.temp_db.name)
-        user_entity, calendar_entity, event_entity = provider.get_entities()
+        user_entity, calendar_entity, event_entity, _ = provider.get_entities()
         
         # Create users
         user1 = user_entity.create_user('user1@example.com')

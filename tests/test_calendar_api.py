@@ -8,6 +8,7 @@ from flask import Flask
 from flask_smorest import Api
 from services.config_service import Config
 from services.database import Database
+from services.database_provider import DatabaseProvider
 from services.api_utils import AuthService
 from services.calendar_service import CalendarService
 from services.notification_service import NotificationService
@@ -35,7 +36,8 @@ class TestCalendarAPI(unittest.TestCase):
         self.config = Config(config_data)
         
         # Initialize database
-        self.database = Database(self.config)
+        provider = DatabaseProvider(self.config)
+        self.database = Database(provider, self.config)
         
         # Set up Flask app for testing
         self.app = Flask(__name__)

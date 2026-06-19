@@ -1,7 +1,5 @@
 import os
 import logging
-import yaml
-from typing import Dict
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -13,8 +11,11 @@ class Config:
         self.config = config
 
     def _getAny(self, key: str, default=None) -> str:
-        env = os.environ.get(key);
-        return env if env else self.config.get(key, default)
+        # Check config dict first, then env vars (config takes precedence)
+        val = self.config.get(key)
+        if val is not None:
+            return val
+        return os.environ.get(key, default)
     
     def get(self, key, default=None):
         return self.config.get(key, default)

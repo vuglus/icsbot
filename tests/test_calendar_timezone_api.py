@@ -4,11 +4,11 @@ import tempfile
 import os
 from flask import Flask
 from flask_smorest import Api
-from services.api_service import initialize_api
+from services.api_service import App
 from services.api_utils import AuthService
-from services.database import init_db, set_db_path, set_db_provider
+from services.database import Database
 from services.config_service import Config
-from database_provider import DatabaseProvider
+from services.database_provider import DatabaseProvider
 
 
 class TestCalendarTimezoneAPI(unittest.TestCase):
@@ -22,14 +22,17 @@ class TestCalendarTimezoneAPI(unittest.TestCase):
         # Create a temporary database for testing
         self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
         self.temp_db.close()
-        set_db_path(self.temp_db.name)
-        set_db_provider('sqlite')
         
-        # Initialize database
-        init_db()
         config = Config({
-            'api_key': 'test-api-key'
+            'api_key': 'test-api-key',
+            'DB_PROVIDER': 'sqlite',
+            'DB_PATH': self.temp_db.name,
         })
+        
+        # Initialize the database
+        provider = DatabaseProvider(config)
+        db = Database(provider, config)
+        
         # Set up Flask app for testing
         self.app = Flask(__name__)
         self.app.config["TESTING"] = True
@@ -44,7 +47,9 @@ class TestCalendarTimezoneAPI(unittest.TestCase):
             def validate_api_key(self):
                 return True
         auth_service = MockAuthService()
-        initialize_api(api, auth_service, config)
+        
+        app_instance = App()
+        app_instance.initialize_api(api, auth_service, None, None)
         
         # Create test client after full initialization
         self.client = self.app.test_client()

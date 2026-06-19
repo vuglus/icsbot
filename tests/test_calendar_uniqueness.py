@@ -1,8 +1,9 @@
 import unittest
 import tempfile
 import os
-from services.database import init_db, set_db_path, set_db_provider
-from database_provider import DatabaseProvider
+from services.database import Database
+from services.database_provider import DatabaseProvider
+from services.config_service import Config
 from entity.base import Calendar
 
 
@@ -14,11 +15,6 @@ class TestCalendarUniqueness(unittest.TestCase):
         # Create a temporary database for testing
         self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
         self.temp_db.close()
-        set_db_path(self.temp_db.name)
-        set_db_provider('sqlite')
-        
-        # Initialize database
-        init_db()
         
     def tearDown(self):
         """Tear down test environment"""
@@ -28,9 +24,17 @@ class TestCalendarUniqueness(unittest.TestCase):
             
     def test_calendar_uniqueness_constraint(self):
         """Test that calendar uniqueness constraint works"""
+        config = Config({
+            'DB_PROVIDER': 'sqlite',
+            'DB_PATH': self.temp_db.name,
+        })
+        
+        # Initialize the database
+        provider = DatabaseProvider(config)
+        db = Database(provider, config)
+        
         # Initialize entities through the provider
-        provider = DatabaseProvider('sqlite', self.temp_db.name)
-        user_entity, calendar_entity, event_entity = provider.get_entities()
+        user_entity, calendar_entity, event_entity, _ = provider.get_entities()
         
         # Create a user
         user = user_entity.create_user('test@example.com')
@@ -50,9 +54,17 @@ class TestCalendarUniqueness(unittest.TestCase):
         
     def test_calendars_for_different_users_can_have_same_url(self):
         """Test that calendars for different users can have the same URL"""
+        config = Config({
+            'DB_PROVIDER': 'sqlite',
+            'DB_PATH': self.temp_db.name,
+        })
+        
+        # Initialize the database
+        provider = DatabaseProvider(config)
+        db = Database(provider, config)
+        
         # Initialize entities through the provider
-        provider = DatabaseProvider('sqlite', self.temp_db.name)
-        user_entity, calendar_entity, event_entity = provider.get_entities()
+        user_entity, calendar_entity, event_entity, _ = provider.get_entities()
         
         # Create two users
         user1 = user_entity.create_user('test1@example.com')

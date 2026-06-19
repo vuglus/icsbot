@@ -9,8 +9,10 @@ from pathlib import Path
 # Add the parent directory to the path so we can import our modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from services.database import init_db, get_db_connection, set_db_path
-from migrations.migration_manager import run_all_migrations
+from services.database import Database
+from services.database_provider import DatabaseProvider
+from services.config_service import Config
+from migrations.migration_manager import MigrationManager
 
 class TestInitialMigration(unittest.TestCase):
     def setUp(self):
@@ -27,11 +29,17 @@ class TestInitialMigration(unittest.TestCase):
 
     def test_initial_migration_creates_tables(self):
         """Test that the initial migration creates all required tables"""
-        # Run the migrations
-        run_all_migrations()
+        config = Config({
+            'DB_PATH': self.temp_db.name,
+            'DB_PROVIDER': 'sqlite'
+        })
+        
+        # Initialize the database
+        provider = DatabaseProvider(config)
+        db = Database(provider, config)
         
         # Check that tables were created
-        conn = get_db_connection()
+        conn = provider.getConnection()
         cursor = conn.cursor()
         
         # Check users table
@@ -63,11 +71,17 @@ class TestInitialMigration(unittest.TestCase):
 
     def test_init_db_runs_migrations(self):
         """Test that init_db function runs migrations successfully"""
-        # This should run without errors
-        init_db()
+        config = Config({
+            'DB_PATH': self.temp_db.name,
+            'DB_PROVIDER': 'sqlite'
+        })
+        
+        # Initialize the database
+        provider = DatabaseProvider(config)
+        db = Database(provider, config)
         
         # Check that tables were created
-        conn = get_db_connection()
+        conn = provider.getConnection()
         cursor = conn.cursor()
         
         # Check that at least one table exists

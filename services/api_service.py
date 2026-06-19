@@ -4,12 +4,12 @@ from services.api_utils import AuthService
 from services.calendar_service import CalendarService
 from services.notification_service import NotificationService
 from .api_endpoints import create_endpoints
-from api_endpoints.health_endpoint import health_blp as health_blueprint
-from api_endpoints.calendar_endpoint import create_calendar_blueprint
-from api_endpoints.cron_endpoint import handle_cron_blueprint
-from api_endpoints.notification_endpoint import create_notification_blueprint
-from api_endpoints.pending_events_endpoint import create_pending_events_blueprint
-from api_endpoints.openapi_endpoint import openapi_blp as openapi_blueprint
+from .api_endpoints.health_endpoint import health_blp as health_blueprint
+from .api_endpoints.calendar_endpoint import create_calendar_blueprint
+from .api_endpoints.cron_endpoint import handle_cron_blueprint
+from .api_endpoints.notification_endpoint import create_notification_blueprint
+from .api_endpoints.pending_events_endpoint import create_pending_events_blueprint
+from .api_endpoints.openapi_endpoint import openapi_blp as openapi_blueprint
 
 # Configure logging
 logger = logging.getLogger(__name__)

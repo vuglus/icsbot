@@ -24,11 +24,11 @@ class DatabaseProvider:
     """Factory for creating database entity instances based on the configured provider"""
     
     def __init__(self, config: Config):
+        self.config = config
         self.db_provider = config.getDBProvider()
         self.db_endpoint = config.getDBEndpoint()
         self.db_path = config.getDBPath()
-        self.notify_before_minutes = self.config.get_notify_before_minutes()
-        self.config = config
+        self.notify_before_minutes = config.get_notify_before_minutes()
         self._sqlite_connection = None
         self._ydb_driver = None
         self._ydb_session_pool = None

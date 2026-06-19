@@ -35,7 +35,10 @@ class MigrationEntity(BaseMigrationEntity):
             cursor.close()
 
     def migration_table_exists(self) -> bool:
-        return self.db_connection.execute('SELECT 1 FROM migrations LIMIT 1').fetchone() is not None
+        try:
+            return self.db_connection.execute('SELECT 1 FROM migrations LIMIT 1').fetchone() is not None
+        except Exception:
+            return False
     
     def get_executed_migrations(self) -> List[Migration]:
         """Get list of executed migrations"""
@@ -86,11 +89,14 @@ class MigrationEntity(BaseMigrationEntity):
     def execute(self, queries):
         cursor = self.db_connection.cursor()
         try:
-            cursor.execute('SELECT 1 FROM migrations WHERE name = ?', (name,))
-            return cursor.fetchone() is not None
+            if isinstance(queries, str):
+                cursor.execute(queries)
+            else:
+                for query in queries:
+                    cursor.execute(query)
+            self.db_connection.commit()
         except Exception as e:
-            logger.error(f"Error checking if migration {name} is executed: {e}")
-            return False
+            logger.error(f"Error executing queries: {e}")
+            raise
         finally:
             cursor.close()
-        

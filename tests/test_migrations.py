@@ -7,9 +7,10 @@ import pytest
 # Add the services directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from services.database import init_db, set_db_path, set_db_provider
+from services.database import Database
 from migrations.migration_manager import MigrationManager
-from database_provider import DatabaseProvider
+from services.database_provider import DatabaseProvider
+from services.config_service import Config
 
 def test_migration_framework():
     """Test the migration framework"""
@@ -18,12 +19,14 @@ def test_migration_framework():
     temp_db.close()
     
     try:
-        # Set the database path to our temporary file
-        set_db_path(temp_db.name)
-        set_db_provider('sqlite')
+        config = Config({
+            'DB_PATH': temp_db.name,
+            'DB_PROVIDER': 'sqlite'
+        })
         
         # Initialize the database
-        init_db()
+        provider = DatabaseProvider(config)
+        db = Database(provider, config)
         
         # Check that migrations table was created
         conn = sqlite3.connect(temp_db.name)
@@ -52,10 +55,6 @@ def test_remove_calendar_duplicates_migration():
     temp_db.close()
     
     try:
-        # Set the database path to our temporary file
-        set_db_path(temp_db.name)
-        set_db_provider('sqlite')
-        
         # Initialize the database without running migrations
         conn = sqlite3.connect(temp_db.name)
         cursor = conn.cursor()

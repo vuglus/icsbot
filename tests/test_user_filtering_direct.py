@@ -1,8 +1,9 @@
 import unittest
 import tempfile
 import os
-from services.database import init_db, set_db_path, set_db_provider
-from database_provider import DatabaseProvider
+from services.database import Database
+from services.database_provider import DatabaseProvider
+from services.config_service import Config
 
 
 class TestUserFilteringDirect(unittest.TestCase):
@@ -13,11 +14,6 @@ class TestUserFilteringDirect(unittest.TestCase):
         # Create a temporary database for testing
         self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
         self.temp_db.close()
-        set_db_path(self.temp_db.name)
-        set_db_provider('sqlite')
-        
-        # Initialize database
-        init_db()
         
     def tearDown(self):
         """Tear down test environment"""
@@ -27,9 +23,17 @@ class TestUserFilteringDirect(unittest.TestCase):
             
     def test_get_users_with_calendars_direct(self):
         """Test getting users with calendars directly"""
+        config = Config({
+            'DB_PROVIDER': 'sqlite',
+            'DB_PATH': self.temp_db.name,
+        })
+        
+        # Initialize the database
+        provider = DatabaseProvider(config)
+        db = Database(provider, config)
+        
         # Initialize entities through the provider
-        provider = DatabaseProvider('sqlite', self.temp_db.name)
-        user_entity, calendar_entity, event_entity = provider.get_entities()
+        user_entity, calendar_entity, event_entity, _ = provider.get_entities()
         
         # Create users
         user1 = user_entity.create_user('user1@example.com')
@@ -37,8 +41,8 @@ class TestUserFilteringDirect(unittest.TestCase):
         user3 = user_entity.create_user('user3@example.com')
         
         # Create calendars for some users
-        calendar_entity.create_calendar(user1, 'https://example.com/cal1.ics')
-        calendar_entity.create_calendar(user2, 'https://example.com/cal2.ics')
+        calendar_entity.create_calendar(user1.id, 'https://example.com/cal1.ics')
+        calendar_entity.create_calendar(user2.id, 'https://example.com/cal2.ics')
         # user3 has no calendars
         
         # Get users with calendars directly
@@ -53,9 +57,17 @@ class TestUserFilteringDirect(unittest.TestCase):
         
     def test_get_users_with_pending_events_direct(self):
         """Test getting users with pending events directly"""
+        config = Config({
+            'DB_PROVIDER': 'sqlite',
+            'DB_PATH': self.temp_db.name,
+        })
+        
+        # Initialize the database
+        provider = DatabaseProvider(config)
+        db = Database(provider, config)
+        
         # Initialize entities through the provider
-        provider = DatabaseProvider('sqlite', self.temp_db.name)
-        user_entity, calendar_entity, event_entity = provider.get_entities()
+        user_entity, calendar_entity, event_entity, _ = provider.get_entities()
         
         # Create users
         user1 = user_entity.create_user('user1@example.com')
@@ -63,29 +75,31 @@ class TestUserFilteringDirect(unittest.TestCase):
         user3 = user_entity.create_user('user3@example.com')
         
         # Create calendars
-        calendar_id1 = calendar_entity.create_calendar(user1, 'https://example.com/cal1.ics')
-        calendar_id2 = calendar_entity.create_calendar(user2, 'https://example.com/cal2.ics')
-        calendar_id3 = calendar_entity.create_calendar(user3, 'https://example.com/cal3.ics')
+        calendar_id1 = calendar_entity.create_calendar(user1.id, 'https://example.com/cal1.ics')
+        calendar_id2 = calendar_entity.create_calendar(user2.id, 'https://example.com/cal2.ics')
+        calendar_id3 = calendar_entity.create_calendar(user3.id, 'https://example.com/cal3.ics')
         
         # Create events for some users
         event_entity.create_event(
             calendar_id=calendar_id1,
             uid='event1',
             title='Event 1',
-            start_time='2023-01-01 10:00:00',
-            end_time='2023-01-01 11:00:00',
+            start_datetime='2023-01-01 10:00:00',
+            end_datetime='2023-01-01 11:00:00',
             description='Test event',
-            location=''
+            location='',
+            all_day=False
         )
         
         event_entity.create_event(
             calendar_id=calendar_id2,
             uid='event2',
             title='Event 2',
-            start_time='2023-01-01 10:00:00',
-            end_time='2023-01-01 11:00:00',
+            start_datetime='2023-01-01 10:00:00',
+            end_datetime='2023-01-01 11:00:00',
             description='Test event',
-            location=''
+            location='',
+            all_day=False
         )
         
         # user3 has no events

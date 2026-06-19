@@ -3,7 +3,9 @@ import tempfile
 import os
 import sys
 import importlib
-from services.database import set_db_path, set_db_provider
+from services.config_service import Config
+from services.database_provider import DatabaseProvider
+from services.database import Database
 
 
 class TestAppStart(unittest.TestCase):
@@ -14,8 +16,6 @@ class TestAppStart(unittest.TestCase):
         # Create a temporary database for testing
         self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
         self.temp_db.close()
-        set_db_path(self.temp_db.name)
-        set_db_provider('sqlite')
         
     def tearDown(self):
         """Tear down test environment"""
@@ -27,6 +27,8 @@ class TestAppStart(unittest.TestCase):
         """Test that app can be created"""
         # Set environment variables for testing
         os.environ['ICS_GATE_API_KEY'] = 'test-api-key'
+        os.environ['DB_PROVIDER'] = 'sqlite'
+        os.environ['DB_PATH'] = self.temp_db.name
         
         # Import app after setting environment variables
         if 'app' in sys.modules:
