@@ -1,23 +1,23 @@
 import logging
-from entity.base import Calendar
+from entity.base import Calendar, User
 from services.database import Database
 from services.ics_parser import download_ics_content, calculate_content_hash, parse_ics_content
 logger = logging.getLogger(__name__)
 logger.info("Starting calendar synchronization")
 
 class CalendarService:
-    def __init__(self, database: Database, tzone: str = None):
+    def __init__(self, database: Database, tzone: str = 'UTC+3'):
         self.db = database
         self.users = self.db.getUser()
         self.events = self.db.getEvent()
         self.calendars = self.db.getCalendar()
         self.tzone = tzone
 
-    def create_user(self, user_id: str) -> bool:
+    def create_user(self, user_id: str) -> User:
         """Create a new user"""
         return self.users.create_user(user_id)
     
-    def create_calendar(self, user_id: str, url: str) -> bool:
+    def create_calendar(self, user_id: str, url: str) -> Calendar:
         """Create a new calendar"""
         return self.calendars.create_calendar(user_id, url)
     

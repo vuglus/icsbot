@@ -37,8 +37,6 @@ Create a `config.yml` file with your calendar URLs:
 
 ```yaml
 api_key: "your-secret-api-key"
-SYNC_INTERVAL_MINUTES: 15
-NOTIFY_INTERVAL_SECONDS: 60
 
 calendars:
   "user1": "https://calendar.google.com/calendar/ical/..."
@@ -50,13 +48,13 @@ calendars:
 ### Get pending events
 
 ```bash
-curl -H "X-API-Key: your-api-key" http://localhost:5800/events/pending
+curl -H "X-Auth-Token: your-api-key" http://localhost:5800/events/pending
 ```
 
 ### Mark notification as delivered
 
 ```bash
-curl -X POST -H "X-API-Key: your-api-key" \
+curl -X POST -H "X-Auth-Token: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{"delivered_at": "2023-06-15T09:30:00Z"}' \
   http://localhost:5800/notifications/123/delivered
@@ -122,8 +120,6 @@ Returns the health status of the service.
 ## Environment Variables
 
 - `ICS_GATE_API_KEY`: API key for authentication
-- `SYNC_INTERVAL_MINUTES`: ICS synchronization frequency (default: 15)
-- `NOTIFY_INTERVAL_SECONDS`: Notification check frequency (default: 60)
 - `DB_PATH`: Path to SQLite database (default: ./icsgate.db)
 - `TIMEZONE_DEFAULT`: Default timezone (default: UTC)
 

@@ -66,7 +66,7 @@ class TestCalendarTimezoneAPI(unittest.TestCase):
         response = self.client.post(
             '/calendars',
             json=calendar_data,
-            headers={'X-API-Key': 'test-api-key'}
+            headers={'X-Auth-Token': 'test-api-key'}
         )
         
         self.assertEqual(response.status_code, 201)
@@ -81,7 +81,7 @@ class TestCalendarTimezoneAPI(unittest.TestCase):
         response = self.client.patch(
             f'/calendars/{calendar_id}/timezone',
             json=timezone_data,
-            headers={'X-API-Key': 'test-api-key'}
+            headers={'X-Auth-Token': 'test-api-key'}
         )
         
         # Check response
@@ -99,7 +99,7 @@ class TestCalendarTimezoneAPI(unittest.TestCase):
         response = self.client.patch(
             '/calendars/999999/timezone',
             json=timezone_data,
-            headers={'X-API-Key': 'test-api-key'}
+            headers={'X-Auth-Token': 'test-api-key'}
         )
         
         # Check response
@@ -119,7 +119,7 @@ class TestCalendarTimezoneAPI(unittest.TestCase):
         response = self.client.post(
             '/calendars',
             json=calendar_data,
-            headers={'X-API-Key': 'test-api-key'}
+            headers={'X-Auth-Token': 'test-api-key'}
         )
         
         self.assertEqual(response.status_code, 201)
@@ -134,7 +134,7 @@ class TestCalendarTimezoneAPI(unittest.TestCase):
         response = self.client.patch(
             f'/calendars/{calendar_id}/timezone',
             json=timezone_data,
-            headers={'X-API-Key': 'test-api-key'}
+            headers={'X-Auth-Token': 'test-api-key'}
         )
         
         # Check response

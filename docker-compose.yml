@@ -30,8 +30,6 @@ services:
     container_name: ics-gate
     ports:
       - "8080:8081"
-    volumes:
-      - ./config:/config:ro  # папка конфига
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]

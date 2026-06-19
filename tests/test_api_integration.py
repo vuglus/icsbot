@@ -6,6 +6,7 @@ from flask_smorest import Api
 from services.api_service import initialize_api   
 from services.database import Database
 from services.config_service import Config
+from services.database_provider import DatabaseProvider
 
 class TestAPIIntegration(unittest.TestCase):
     """Test API integration endpoints"""
@@ -14,12 +15,12 @@ class TestAPIIntegration(unittest.TestCase):
         """Set up test environment"""
         # Set API key for testing
         os.environ['ICS_GATE_API_KEY'] = 'test-api-key'
-        
         # Create a temporary database for testing
-        db = Database('sqlite', ':memory:')
         config = Config({
             'api_key': 'test-api-key'
         })
+        provider = DatabaseProvider(config=config)
+        db = Database(provider, config=config)
         # Set up Flask app for testing
         self.app = Flask(__name__)
         self.app.config["TESTING"] = True
@@ -34,7 +35,7 @@ class TestAPIIntegration(unittest.TestCase):
             def validate_api_key(self):
                 # Get the API key from the request
                 from flask import request
-                api_key = request.headers.get('X-API-Key')
+                api_key = request.headers.get('X-Auth-Token')
                 return api_key == 'test-api-key'
         auth_service = MockAuthService()
         initialize_api(api, auth_service)
@@ -57,7 +58,7 @@ class TestAPIIntegration(unittest.TestCase):
         response = self.client.post(
             '/calendars',
             json=calendar_data,
-            headers={'X-API-Key': 'test-api-key'}
+            headers={'X-Auth-Token': 'test-api-key'}
         )
         
         # Check calendar creation

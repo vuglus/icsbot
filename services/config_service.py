@@ -35,14 +35,8 @@ class Config:
     def get_notify_before_minutes(self) -> int:
         return int(self._getAny('NOTIFY_BEFORE_MINUTES', 15))
 
-    def get_sync_interval(self) -> int:
-        return self._getAny('SYNC_INTERVAL_MINUTES', 30)
-    
-    def get_notify_interval(self) -> int:
-        return self._getAny('NOTIFY_INTERVAL_SECONDS', 60)
-    
     def getTZone(self) -> str:
         return self._getAny('TIMEZONE_DEFAULT', 'UTC')
 
-    def get_port(self) -> str:
-        return self._getAny('EXT_PORT', '8080')
+    def get_port(self) -> int:
+        return int(self._getAny('EXT_PORT', 8080))

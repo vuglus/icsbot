@@ -74,7 +74,7 @@ class TestAPIUserFiltering(unittest.TestCase):
         # Get users with calendars via API
         response = self.client.get(
             '/users/with-calendars',
-            headers={'X-API-Key': 'test-api-key'}
+            headers={'X-Auth-Token': 'test-api-key'}
         )
         
         # Check response
@@ -129,7 +129,7 @@ class TestAPIUserFiltering(unittest.TestCase):
         # Get users with pending events via API
         response = self.client.get(
             '/users/with-pending-events',
-            headers={'X-API-Key': 'test-api-key'}
+            headers={'X-Auth-Token': 'test-api-key'}
         )
         
         # Check response

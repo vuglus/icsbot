@@ -3,8 +3,6 @@ flask-smorest==0.46.2
 marshmallow>=3.21,<4
 icalendar>=4.0.0
 requests>=2.25.0
-PyYAML>=5.4.0
-APScheduler>=3.7.0
 python-dateutil>=2.8.0
 python-decouple>=3.4.0
 pytest

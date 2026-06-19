@@ -85,7 +85,7 @@ class TestCalendarAPI(unittest.TestCase):
         response = self.client.post(
             '/calendars',
             json=test_data,
-            headers={'X-API-Key': 'test-api-key'}
+            headers={'X-Auth-Token': 'test-api-key'}
         )
         
         # Check response
@@ -107,14 +107,14 @@ class TestCalendarAPI(unittest.TestCase):
         response1 = self.client.post(
             '/calendars',
             json=test_data,
-            headers={'X-API-Key': 'test-api-key'}
+            headers={'X-Auth-Token': 'test-api-key'}
         )
         
         # Create same calendar again
         response2 = self.client.post(
             '/calendars',
             json=test_data,
-            headers={'X-API-Key': 'test-api-key'}
+            headers={'X-Auth-Token': 'test-api-key'}
         )
         
         # Both should succeed
@@ -142,7 +142,7 @@ class TestCalendarAPI(unittest.TestCase):
         response = self.client.post(
             '/calendars',
             json=test_data,
-            headers={'X-API-Key': 'test-api-key'}
+            headers={'X-Auth-Token': 'test-api-key'}
         )
         
         # Check response
@@ -163,7 +163,7 @@ class TestCalendarAPI(unittest.TestCase):
         response = self.client.post(
             '/calendars',
             json=test_data,
-            headers={'X-API-Key': 'test-api-key'}
+            headers={'X-Auth-Token': 'test-api-key'}
         )
         
         # Check response
@@ -200,7 +200,7 @@ class TestCalendarAPI(unittest.TestCase):
         response = self.client.post(
             '/calendars',
             json=test_data,
-            headers={'X-API-Key': 'test-api-key'}
+            headers={'X-Auth-Token': 'test-api-key'}
         )
         
         # Check that calendar was created
@@ -213,7 +213,7 @@ class TestCalendarAPI(unittest.TestCase):
             # Test sync endpoint
             sync_response = self.client.put(
                 f'/calendars/{calendar_id}/sync',
-                headers={'X-API-Key': 'test-api-key'}
+                headers={'X-Auth-Token': 'test-api-key'}
             )
             
             # Check response
@@ -226,7 +226,7 @@ class TestCalendarAPI(unittest.TestCase):
         # Test sync endpoint with non-existent calendar ID
         sync_response = self.client.put(
             '/calendars/nonexistent/sync',
-            headers={'X-API-Key': 'test-api-key'}
+            headers={'X-Auth-Token': 'test-api-key'}
         )
         
         # Check response

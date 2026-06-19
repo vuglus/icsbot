@@ -27,6 +27,7 @@ class DatabaseProvider:
         self.db_provider = config.getDBProvider()
         self.db_endpoint = config.getDBEndpoint()
         self.db_path = config.getDBPath()
+        self.notify_before_minutes = self.config.get_notify_before_minutes()
         self.config = config
         self._sqlite_connection = None
         self._ydb_driver = None
@@ -58,7 +59,7 @@ class DatabaseProvider:
 
         raise NotImplementedError(f"{self.db_provider} is not supported yet")
     
-    def get_entities(self) -> Tuple[object, object, object]:
+    def get_entities(self) -> Tuple[object, object, object, object]:
         """Get entity instances based on the configured provider"""
         if self.db_provider == "sqlite":
             return self._get_sqlite_entities()
@@ -72,7 +73,7 @@ class DatabaseProvider:
         conn = self.getConnection()
         user_entity = SqliteUserEntity(conn)
         calendar_entity = SqliteCalendarEntity(conn)
-        event_entity = SqliteEventEntity(conn, self.config.get_notify_before_minutes())
+        event_entity = SqliteEventEntity(conn, self.notify_before_minutes)
         migration_entity = SqliteMigrationEntity(conn)
         
         return user_entity, calendar_entity, event_entity, migration_entity
@@ -81,7 +82,7 @@ class DatabaseProvider:
         conn = self.getConnection()
         user_entity = YdbUserEntity(conn)
         calendar_entity = YdbCalendarEntity(conn, user_entity)
-        event_entity = YdbEventEntity(conn, self.config.get_notify_before_minutes(), user_entity, calendar_entity)
+        event_entity = YdbEventEntity(conn, self.notify_before_minutes, user_entity, calendar_entity)
         migration_entity = YdbMigrationEntity(conn)
         
         return user_entity, calendar_entity, event_entity, migration_entity

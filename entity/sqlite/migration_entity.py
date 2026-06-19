@@ -33,6 +33,9 @@ class MigrationEntity(BaseMigrationEntity):
             raise
         finally:
             cursor.close()
+
+    def migration_table_exists(self) -> bool:
+        return self.db_connection.execute('SELECT 1 FROM migrations LIMIT 1').fetchone() is not None
     
     def get_executed_migrations(self) -> List[Migration]:
         """Get list of executed migrations"""

@@ -15,7 +15,7 @@ class AuthService:
         # Check header first
         data = request.get_json(silent=True) or {}
         api_key = (
-            request.headers.get('X-API-Key') or 
+            request.headers.get('X-Auth-Token') or 
             request.args.get('api_key') or 
             data.get("details", {}).get("payload", {})
         )       

@@ -13,12 +13,12 @@ logger = logging.getLogger(__name__)
 class Database:
     """Database class for managing database connections and migrations"""
     
-    def __init__(self, config: Config):
+    def __init__(self, provider: DatabaseProvider, config: Config):
         self.provider_type = config.getDBProvider()
         self.endpoint = config.getDBEndpoint()
         self.path = config.getDBPath()
         self.config = config
-        self.provider = DatabaseProvider(config)
+        self.provider = provider
         self._user_entity = None
         self._calendar_entity = None
         self._event_entity = None
@@ -33,6 +33,9 @@ class Database:
         
     def getUser(self) -> BaseUserEntity :  
         """Get the user entity instance"""
+        if self._user_entity == None:
+            raise Exception("User entity not initialized")
+            
         return self._user_entity
     
     def getCalendar(self) -> BaseCalendarEntity : 
