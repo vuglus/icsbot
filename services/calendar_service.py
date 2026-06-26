@@ -21,6 +21,10 @@ class CalendarService:
         """Create a new calendar"""
         return self.calendars.create_calendar(user_id, url)
     
+    def get_calendars(self, user_id: str = None):
+        """Get all calendars, optionally filtered by user_id"""
+        return self.calendars.get_calendars(user_id)
+
     def get_calendar_by_id(self, calendar_id: str):
         """Get a calendar by ID"""
         return self.calendars.get_calendar_by_id(calendar_id)
