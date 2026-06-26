@@ -2,10 +2,18 @@ import sqlite3
 import os
 import logging
 from typing import List
-from services.database import get_db_connection
+from entity.base import BaseMigrationEntity
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+# Import migration classes
+from migrations.sqlite.initial_schema import InitialSchemaMigration as SqliteInitialSchemaMigration
+from migrations.sqlite.remove_calendar_duplicates import RemoveCalendarDuplicatesMigration as SqliteRemoveCalendarDuplicatesMigration
+
+from migrations.ydb.m20260218_migration_table import m20260218_migration_table
+from migrations.ydb.m20260219_events_index import m20260219_events_index
+from migrations.ydb.initial_schema import InitialSchemaMigration as YdbInitialSchemaMigration
 
 class Migration:
     def __init__(self, id: int, name: str, executed_at: str):
@@ -13,98 +21,64 @@ class Migration:
         self.name = name
         self.executed_at = executed_at
 
-def init_migration_table():
-    """Initialize the migrations table"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    # Check if migrations table exists
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='migrations'")
-    table_exists = cursor.fetchone()
-    
-    if not table_exists:
-        cursor.execute('''
-            CREATE TABLE migrations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT UNIQUE NOT NULL,
-                executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        logger.info("Created migrations table")
-    else:
-        logger.info("Migrations table already exists")
-    
-    conn.commit()
-    conn.close()
 
-def get_executed_migrations() -> List[Migration]:
-    """Get list of executed migrations"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('SELECT * FROM migrations ORDER BY id')
-        rows = cursor.fetchall()
-        conn.close()
-        
-        return [Migration(row['id'], row['name'], row['executed_at']) for row in rows]
-    except Exception as e:
-        logger.error(f"Error getting executed migrations: {e}")
-        return []
+class MigrationManager:
+    """Manager for running database migrations"""
+    
+    def __init__(self, provider: str, migrationEntity: BaseMigrationEntity):
+        self.entity = migrationEntity
+        self.provider = provider
+        self.migrations_table_initialized = False
 
-def record_migration(name: str):
-    """Record a migration as executed"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    try:
-        cursor.execute('INSERT INTO migrations (name) VALUES (?)', (name,))
-        conn.commit()
-        logger.info(f"Recorded migration: {name}")
-    except sqlite3.IntegrityError:
-        logger.warning(f"Migration {name} already recorded")
-    finally:
-        conn.close()
-
-def run_migration(name: str, migration_func):
-    """Run a migration if it hasn't been executed yet"""
-    executed_migrations = get_executed_migrations()
-    executed_names = [m.name for m in executed_migrations]
-    
-    if name in executed_names:
-        logger.info(f"Migration {name} already executed, skipping")
-        return False
-    
-    logger.info(f"Running migration: {name}")
-    migration_func()
-    record_migration(name)
-    return True
-
-def run_all_migrations():
-    """Run all migrations"""
-    logger.info("Running all migrations")
-    init_migration_table()
-    
-    try:
-        # Import migrations here to avoid circular imports
-        from migrations import initial_schema
-        from migrations import remove_calendar_duplicates
-        from migrations import add_calendar_timezone
-        from migrations import enforce_calendar_unique_constraint
-        from migrations import m20260201_unique_event
-        from migrations import m202602021223_event_fix_calendsar
+    def init_migration_table(self):
+        """Initialize the migrations table"""
+        if self.migrations_table_initialized:
+            return
         
+        if not self.entity.migration_table_exists(): 
+            self.run_migration('InitMigrationsEngine', m20260218_migration_table())
         
-        # Run migrations in order
-        run_migration("initial_schema", initial_schema.run)
-        run_migration("remove_calendar_duplicates", remove_calendar_duplicates.run)
-        run_migration("add_calendar_timezone", add_calendar_timezone.run)
-        run_migration("enforce_calendar_unique_constraint", enforce_calendar_unique_constraint.run)
-        run_migration("migrations/m20260201_unique_event", m20260201_unique_event.run)
-        run_migration("m20260201_unique_event", m20260201_unique_event.run)
-        run_migration("m202602021223_event_fix_calendsar", m202602021223_event_fix_calendsar.run)
+        self.migrations_table_initialized = True
+    
+    def record_migration(self, name: str):
+        self.entity.record_migration(name)
+    
+    def run_migration(self, name: str, migration_instance):
+        """Run a migration if it hasn't been executed yet"""
+        executed_migrations = self.entity.get_executed_migrations()
+        executed_names = [m.name for m in executed_migrations]
         
-        logger.info("All migrations completed")
-    except Exception as e:
-        logger.error(f"Error running migrations: {e}")
-        raise
+        if name in executed_names:
+            logger.info(f"Migration {name} already executed, skipping")
+            return False
+        
+        logger.info(f"Running migration: {name}")
+        migration_instance.run(self.entity)        
+        self.record_migration(name)
+        return True
+    
+    def run_all_migrations(self):
+        """Run all migrations"""
+        logger.info("Running all migrations")
+        self.init_migration_table()
+        
+        try:
+            # Get the appropriate migration classes based on provider
+            if self.provider == "sqlite":
+                migrations = [
+                    ("initial_schema", SqliteInitialSchemaMigration()),
+                    ("remove_calendar_duplicates", SqliteRemoveCalendarDuplicatesMigration()),
+                ]
+            elif self.provider == "ydb":
+                migrations = [
+                    ("initial_schema", YdbInitialSchemaMigration()),
+                    ("m20260219_events_index", m20260219_events_index())
+                ]
+            # Run migrations in order
+            for name, migration_instance in migrations:
+                self.run_migration(name, migration_instance)
+            
+            logger.info("All migrations completed")
+        except Exception as e:
+            logger.error(f"Error running migrations: {e}")
+            raise

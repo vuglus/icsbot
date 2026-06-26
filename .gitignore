@@ -1,9 +1,10 @@
 .venv
 __pycache__
-config.yml
+data/
+config/config.yml
 icsgate.db
 test.db
 .codeassistant
 .pytest_cache
-config/
-data/
+.env
+.env_local

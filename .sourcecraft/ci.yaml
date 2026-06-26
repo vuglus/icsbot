@@ -1,8 +1,12 @@
 on:
   push:
-    workflows: [deploy-to-serverless]
-  pull_request:
-    workflows: [deploy-to-serverless]
+    - workflows: [deploy-to-serverless]
+      filter:
+        branches: [ycloud]
+  # pull_request:
+  #   - workflows: [test-only]
+  #     filter:
+  #       target_branches: [ycloud]
 
 tokens:
   SERVICE_CONNECTION:
@@ -10,6 +14,14 @@ tokens:
     scope: org
 
 workflows:
+  # test-only:
+  #   tasks:
+  #     - name: setup-and-test
+  #       image: cr.yandex/mirror/library/python:3.13.2-slim
+  #       script:
+  #         - python -m pip install --upgrade pip
+  #         - if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+  #         - pytest -q
   deploy-to-serverless:
     tasks:
       - name: deploy-task
@@ -18,6 +30,11 @@ workflows:
           IMAGE_NAME: icsbot-image
           YC_SERVERLESS_CONTAINER_NAME: icsbot-container
           YC_SERVICE_ACCOUNT_ID: ${{ tokens.SERVICE_CONNECTION.service_account_id }}
+          API_KEY: ${{ secrets.API_KEY }}
+          DB_PROVIDER: ydb
+          DB_ENDPOINT: ${{ secrets.DB_ENDPOINT }}
+          DB_PATH: ${{ secrets.DB_PATH }}
+          EXT_PORT: ${{ secrets.EXT_PORT }}
         cubes:
           # Return IAM-token through outputs.IAM_TOKEN
           - name: get-iam-token
@@ -25,10 +42,6 @@ workflows:
               ID_TOKEN: ${{ tokens.SERVICE_CONNECTION.id_token }}
               YC_SA_ID: ${{ tokens.SERVICE_CONNECTION.service_account_id }}
             image: cr.yandex/sourcecraft/yc-iam:latest
-
-          # Example of usage GitHub Actions
-          - name: setup-buildx
-            action: docker/setup-buildx-action@v3.11.1
 
           - name: login
             action: docker/login-action@v3.5.0
@@ -45,7 +58,7 @@ workflows:
               platforms: linux/amd64
               tags: |
                 cr.yandex/crpnegsi3mo0h8rm5k1p/icsbot-image:latest
-              push: true
+              push: "true"
       
           # Example of usage with Yandex Cloud CLI
           - name: yc-cli-deploy
@@ -77,4 +90,10 @@ workflows:
                     echo "Container $YC_SERVERLESS_CONTAINER_NAME already exists"
                 fi
                 
-                yc serverless container revision deploy --container-name $YC_SERVERLESS_CONTAINER_NAME --image $YC_DOCKER_REGISTRY_URI/$IMAGE_NAME:latest --service-account-id $YC_SERVICE_ACCOUNT_ID
+                yc serverless container revision deploy \
+                  --container-name $YC_SERVERLESS_CONTAINER_NAME \
+                  --image $YC_DOCKER_REGISTRY_URI/$IMAGE_NAME:latest \
+                  --service-account-id $YC_SERVICE_ACCOUNT_ID \
+                  --environment EXT_PORT=$EXT_PORT,API_KEY=$API_KEY,DB_PROVIDER=$DB_PROVIDER,DB_ENDPOINT=$DB_ENDPOINT,DB_PATH=$DB_PATH \
+                  --memory 1GB \
+                  --execution-timeout 5m

@@ -1,0 +1,21 @@
+# ICS-Gate Configuration Example
+
+# API key for accessing the service
+api_key: "your-secret-api-key-here"
+
+# Notification time before event in minutes (default: 1440 = 24 hours)
+NOTIFY_BEFORE_MINUTES: 1440
+
+# Database provider
+DB_PROVIDER: "ydb"
+# Path/uri of database
+DB_PATH: "grpcs://ydb.serverless.yandexcloud.net:..."
+
+# Default timezone
+TIMEZONE_DEFAULT: "UTC"
+
+# Calendar configurations
+calendars:
+  # User ID mapped to calendar URL
+  "user1": "https://calendar.google.com/calendar/ical/..."
+  "user2": "https://outlook.office365.com/owa/calendar/..."

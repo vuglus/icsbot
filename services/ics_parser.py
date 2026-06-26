@@ -10,9 +10,9 @@ import requests
 logger = logging.getLogger(__name__)
 
 # Global variables
-TIMEZONE_DEFAULT = None  # This will be set from the main app
+TIMEZONE_DEFAULT = 'UTC'  # This will be set from the main app
 
-def parse_ics_content(ics_content: str) -> List[Dict]:
+def parse_ics_content(ics_content: str, tzone: str = TIMEZONE_DEFAULT) -> List[Dict]:
     """Parse ICS content and extract events"""
     try:
         cal = ICalendar.from_ical(ics_content)
@@ -40,7 +40,7 @@ def parse_ics_content(ics_content: str) -> List[Dict]:
                     if isinstance(event['start'], datetime):
                         # Make timezone aware if not already
                         if event['start'].tzinfo is None:
-                            event['start'] = event['start'].replace(tzinfo=tz.gettz(TIMEZONE_DEFAULT))
+                            event['start'] = event['start'].replace(tzinfo=tz.gettz(tzone))
                         event['start'] = event['start'].isoformat()
                     else:
                         event['start'] = event['start'].isoformat()
@@ -49,7 +49,7 @@ def parse_ics_content(ics_content: str) -> List[Dict]:
                     if isinstance(event['end'], datetime):
                         # Make timezone aware if not already
                         if event['end'].tzinfo is None:
-                            event['end'] = event['end'].replace(tzinfo=tz.gettz(TIMEZONE_DEFAULT))
+                            event['end'] = event['end'].replace(tzinfo=tz.gettz(tzone))
                         event['end'] = event['end'].isoformat()
                     else:
                         event['end'] = event['end'].isoformat()
