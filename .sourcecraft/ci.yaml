@@ -2,7 +2,7 @@ on:
   push:
     - workflows: [deploy-to-serverless]
       filter:
-        branches: [ycloud]
+        branches: [master]
   # pull_request:
   #   - workflows: [test-only]
   #     filter:
