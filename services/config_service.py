@@ -1,44 +1,43 @@
 import os
 import logging
-import yaml
-from typing import Dict
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 # Global variables
-CONFIG_PATH = os.environ.get('CONFIG_PATH', 'config.yml')
 
-def load_config() -> Dict:
-    """Load configuration from YAML file"""
-    try:
-        with open(CONFIG_PATH, 'r') as f:
-            config = yaml.safe_load(f)
-        logger.info(f"Loaded configuration from {CONFIG_PATH}")
-        return config or {}  # Return empty dict if config is None
-    except FileNotFoundError:
-        logger.info(f"Configuration file {CONFIG_PATH} not found, using defaults")
-        return {}
-    except Exception as e:
-        logger.error(f"Error loading configuration: {e}")
-        return {}
+class Config:
+    def __init__(self, config):
+        self.config = config
 
-def get_api_key() -> str:
-    """Get API key from environment or config"""
-    api_key = os.environ.get('ICS_GATE_API_KEY', '')
-    if not api_key:
-        config = load_config()
-        api_key = config.get('api_key', '')
-    return api_key
-
-def get_notify_before_minutes() -> int:
-    """Get notification time before event in minutes from config or environment"""
-    # First check environment variable
-    notify_before_minutes = os.environ.get('NOTIFY_BEFORE_MINUTES')
-    if notify_before_minutes:
-        return int(notify_before_minutes)
+    def _getAny(self, key: str, default=None) -> str:
+        # Check config dict first, then env vars (config takes precedence)
+        val = self.config.get(key)
+        if val is not None:
+            return val
+        return os.environ.get(key, default)
     
-    # Then check config file
-    config = load_config()
-    notify_before_minutes = config.get('NOTIFY_BEFORE_MINUTES', 1440)  # Default to 24 hours
-    return int(notify_before_minutes)
+    def get(self, key, default=None):
+        return self.config.get(key, default)
+    
+    def getApiKey(self):
+        key = os.environ.get('API_KEY')
+        return key if key else self.config.get('api_key')
+    
+    def getDBProvider(self):        
+        return self._getAny('DB_PROVIDER')
+
+    def getDBPath(self):
+        return self._getAny('DB_PATH')
+
+    def getDBEndpoint(self):
+        return self._getAny('DB_ENDPOINT')
+
+    def get_notify_before_minutes(self) -> int:
+        return int(self._getAny('NOTIFY_BEFORE_MINUTES', 15))
+
+    def getTZone(self) -> str:
+        return self._getAny('TIMEZONE_DEFAULT', 'UTC')
+
+    def get_port(self) -> int:
+        return int(self._getAny('EXT_PORT', 8080))

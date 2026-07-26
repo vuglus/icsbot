@@ -21,11 +21,3 @@ def health_check():
         'timestamp': datetime.now().isoformat(),
         'version': '1.0.0'
     })
-
-def register_health_endpoint(app):
-    """Register health check endpoint"""
-    # Register the blueprint with the app
-    app.register_blueprint(health_blp)
-    
-    # Return the view function
-    return health_check
