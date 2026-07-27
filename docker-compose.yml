@@ -11,35 +11,39 @@ services:
       - "2136:2136"
       - "8765:8765"
       - "9092:9092"
-
-    volumes:
-      - "${YDB_CERTS_PATH}"
-      - "${YDB_DATA_PATH}" 
-
-    networks:
-      - ydbnet
     environment:
       GRPC_TLS_PORT: "2135"
       GRPC_PORT: "2136"
       MON_PORT: "8765"
-      YDB_KAFKA_PROXY_PORT: "9092"
+      YDB_KAFKA_KAFKA_PROXY_PORT: "9092"
+    volumes:
+      - "D:/Work/ydb/ydb_certs:/ydb_certs"
+      - ydb_data:/ydb_data
+    networks:
+      - ydbnet
   ics-gate:
     env_file:
       - .env
     build: .
     container_name: ics-gate
     ports:
-      - "8080:8081"
+      - "8080:8080"
     restart: unless-stopped
+    depends_on:
+      ydb-local:
+        condition: service_started
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; import sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/health').status == 200 else 1)"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 10s
     networks:
       - ydbnet
 
 networks:
   ydbnet:
     driver: bridge
+
+volumes:
+  ydb_data:

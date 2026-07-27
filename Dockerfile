@@ -33,13 +33,15 @@ ENV DB_PROVIDER=ydb
 ENV DB_ENDPOINT=ydb-local:2136
 ENV DB_PATH=/local
 ENV PORT=8080
+ENV TG_BOT_URL=
+ENV TG_BOT_TOKEN=
 # Expose port
 EXPOSE ${PORT}
 
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT}/health || exit 1
+    CMD python -c "import urllib.request; import sys; sys.exit(0 if urllib.request.urlopen('http://localhost:${PORT:-8080}/health').status == 200 else 1)"
 
 # Run application
 ENTRYPOINT ["python", "app.py"]

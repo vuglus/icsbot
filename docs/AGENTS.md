@@ -1,16 +1,28 @@
-## Проект для работы с ics файлами
+## Проект для работы с календарями (ICS/CalDAV)
 
-- загружаем ics файлы по ссылке в БД 
-- выдаём актуальные события по запросу пользователя
+- Регистрируем календари по chat_id/chat_type (tg/max)
+- Загружаем события из ICS по ссылке или через CalDAV
+- Отправляем уведомления о предстоящих событиях в чат-бот
+- Не храним события в БД (только календари и отправленные уведомления)
 
 ## Структура проекта:
 
 - app.py - главный файл приложения
 - services/ - папка с сервисами
--- database.py  - сервис для работы с базой данных
-- config - папка с конфигурацией (config.yml)
-- entities/ - папка с объектами базы данных для каждого типа базы данных
-- entities/sqlite/ - entities для sqlite
-- entities/ydb/ - entities для YDB
-- controllers/ - папка с api endpints 
+  - database.py - сервис для работы с базой данных
+  - calendar_service.py - работа с календарями
+  - notification_service.py - отправка уведомлений
+  - caldav_client.py - клиент CalDAV
+  - ics_parser.py - парсер ICS файлов
+  - background_service.py - фоновые задачи
+  - config_service.py - конфигурация
+  - api_service.py - Flask приложение
+  - api_endpoints/ - API эндпоинты
+- entity/ - папка с объектами базы данных
+  - sqlite/ - SQLite реализации
+  - ydb/ - YDB реализации
+- migrations/ - миграции базы данных
 
+## Таблицы БД:
+- calendars - зарегистрированные календари
+- sent_notifications - отправленные уведомления (для дедупликации)

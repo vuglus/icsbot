@@ -6,80 +6,105 @@ from icalendar import Calendar as ICalendar
 from dateutil import tz
 import requests
 
-# Configure logging
 logger = logging.getLogger(__name__)
 
-# Global variables
-TIMEZONE_DEFAULT = 'UTC'  # This will be set from the main app
+TIMEZONE_DEFAULT = "UTC"
 
-def parse_ics_content(ics_content: str, tzone: str = TIMEZONE_DEFAULT) -> List[Dict]:
-    """Parse ICS content and extract events"""
+
+class IcsEvent:
+    def __init__(
+        self,
+        uid: str,
+        summary: str,
+        description: str,
+        location: str,
+        start: str,
+        end: str,
+        all_day: bool = False,
+    ):
+        self.uid = uid
+        self.summary = summary
+        self.description = description
+        self.location = location
+        self.start = start
+        self.end = end
+        self.all_day = all_day
+
+
+def parse_ics_content(
+    ics_content: str, tzone: str = TIMEZONE_DEFAULT
+) -> List[IcsEvent]:
     try:
         cal = ICalendar.from_ical(ics_content)
         events = []
-        
+
         for component in cal.walk():
             if component.name == "VEVENT":
-                event = {
-                    'uid': str(component.get('uid', '')),
-                    'summary': str(component.get('summary', '')),
-                    'description': str(component.get('description', '')),
-                    'location': str(component.get('location', '')),
-                    'start': component.get('dtstart').dt if component.get('dtstart') else None,
-                    'end': component.get('dtend').dt if component.get('dtend') else None,
-                    'duration': component.get('duration') if component.get('duration') else None,
-                    'all_day': False
-                }
-                
-                # Handle all-day events
-                if event['start'] and hasattr(event['start'], 'date'):
-                    event['all_day'] = True
-                
-                # Convert datetime to string
-                if event['start']:
-                    if isinstance(event['start'], datetime):
-                        # Make timezone aware if not already
-                        if event['start'].tzinfo is None:
-                            event['start'] = event['start'].replace(tzinfo=tz.gettz(tzone))
-                        event['start'] = event['start'].isoformat()
+                uid = str(component.get("uid", ""))
+                summary = str(component.get("summary", ""))
+                description = str(component.get("description", ""))
+                location = str(component.get("location", ""))
+                start = (
+                    component.get("dtstart").dt if component.get("dtstart") else None
+                )
+                end = component.get("dtend").dt if component.get("dtend") else None
+                duration = (
+                    component.get("duration") if component.get("duration") else None
+                )
+                all_day = False
+
+                if start and hasattr(start, "date"):
+                    all_day = True
+
+                if start:
+                    if isinstance(start, datetime):
+                        if start.tzinfo is None:
+                            start = start.replace(tzinfo=tz.gettz(tzone))
+                        start = start.isoformat()
                     else:
-                        event['start'] = event['start'].isoformat()
-                
-                if event['end']:
-                    if isinstance(event['end'], datetime):
-                        # Make timezone aware if not already
-                        if event['end'].tzinfo is None:
-                            event['end'] = event['end'].replace(tzinfo=tz.gettz(tzone))
-                        event['end'] = event['end'].isoformat()
+                        start = start.isoformat()
+
+                if end:
+                    if isinstance(end, datetime):
+                        if end.tzinfo is None:
+                            end = end.replace(tzinfo=tz.gettz(tzone))
+                        end = end.isoformat()
                     else:
-                        event['end'] = event['end'].isoformat()
-                elif event['duration'] and event['start']:
-                    # Calculate end datetime based on duration
+                        end = end.isoformat()
+                elif duration and start:
                     from datetime import timedelta
-                    if isinstance(event['start'], str):
-                        # Parse the start datetime string
+
+                    if isinstance(start, str):
                         from dateutil import parser
-                        start_dt = parser.parse(event['start'])
+
+                        start_dt = parser.parse(start)
                     else:
-                        start_dt = event['start']
-                    
-                    # Calculate end datetime
-                    end_dt = start_dt + event['duration'].dt
-                    event['end'] = end_dt.isoformat()
-                elif not event['end'] and event['start']:
-                    # If end datetime is still missing, set it to start datetime
-                    event['end'] = event['start']
-                
-                events.append(event)
-        
+                        start_dt = start
+                    end_dt = start_dt + duration.dt
+                    end = end_dt.isoformat()
+                elif not end and start:
+                    end = start
+
+                events.append(
+                    IcsEvent(
+                        uid=uid,
+                        summary=summary,
+                        description=description,
+                        location=location,
+                        start=start,
+                        end=end,
+                        all_day=all_day,
+                    )
+                )
+
         logger.info(f"Parsed {len(events)} events from ICS content")
         return events
     except Exception as e:
         logger.error(f"Error parsing ICS content: {e}")
         return []
 
+
 def download_ics_content(url: str) -> str:
-    """Download ICS content from a URL"""
     try:
         response = requests.get(url, timeout=30)
         response.raise_for_status()
@@ -87,7 +112,3 @@ def download_ics_content(url: str) -> str:
     except Exception as e:
         logger.error(f"Error downloading ICS content from {url}: {e}")
         raise
-
-def calculate_content_hash(content: str) -> str:
-    """Calculate MD5 hash of content"""
-    return hashlib.md5(content.encode()).hexdigest()

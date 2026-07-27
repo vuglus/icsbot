@@ -1,15 +1,16 @@
 # ICS-Gate
 
-A service for processing ICS calendars and notifying external clients about upcoming events.
-
-[![License](https://img.shields.io/github/license/.../ics-gate)](LICENSE)
+A service for processing ICS/CalDAV calendars and sending event notifications to Telegram/Max chats.
 
 ## Features
 
-- ICS calendar parsing and storage
+- ICS calendar parsing (load, notify, forget - no event storage)
+- CalDAV support (on-demand event fetching)
+- Chat-based calendar registration (Telegram or Max)
+- Automatic event notification via chat bot API
+- Sent notification tracking (deduplication)
 - REST API with API key authentication
-- Background synchronization and notification scheduling
-- SQLite persistence
+- SQLite and YDB persistence
 - Docker deployment
 
 ## Quick Start
@@ -20,11 +21,7 @@ A service for processing ICS calendars and notifying external clients about upco
    cd ics-gate
    ```
 
-2. Create a configuration file:
-   ```bash
-   cp config.example.yml config.yml
-   # Edit config.yml with your settings
-   ```
+2. Configure environment variables (see below)
 
 3. Run with Docker:
    ```bash
@@ -33,109 +30,98 @@ A service for processing ICS calendars and notifying external clients about upco
 
 ## Configuration
 
-Create a `config.yml` file with your calendar URLs:
+### Environment Variables
 
-```yaml
-api_key: "your-secret-api-key"
-
-calendars:
-  "user1": "https://calendar.google.com/calendar/ical/..."
-  "user2": "https://outlook.office365.com/owa/calendar/..."
-```
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` / `EXT_PORT` | `8080` | Flask listen port |
+| `API_KEY` | - | API key for authentication |
+| `DB_PROVIDER` | - | `sqlite` or `ydb` |
+| `DB_PATH` | - | SQLite file path or YDB database path |
+| `DB_ENDPOINT` | - | YDB endpoint (e.g., `localhost:2136`) |
+| `TG_BOT_URL` | - | Telegram bot API URL for sending notifications |
+| `TG_BOT_TOKEN` | - | Token for Telegram bot authorization |
+| `NOTIFY_BEFORE_MINUTES` | `15` | How far ahead to look for pending events |
+| `NOTIFY_INTERVAL_SECONDS` | `60` | Background notification check interval |
+| `TIMEZONE_DEFAULT` | `UTC` | Default timezone for parsing naive datetimes |
 
 ## API Usage
 
-### Get pending events
-
-```bash
-curl -H "X-Auth-Token: your-api-key" http://localhost:5800/events/pending
-```
-
-### Mark notification as delivered
+### Create a calendar
 
 ```bash
 curl -X POST -H "X-Auth-Token: your-api-key" \
   -H "Content-Type: application/json" \
-  -d '{"delivered_at": "2023-06-15T09:30:00Z"}' \
-  http://localhost:5800/notifications/123/delivered
+  -d '{"chat_id": "123456789", "chat_type": "tg", "url": "https://calendar.google.com/calendar/ical/.../basic.ics"}' \
+  http://localhost:8080/calendars
 ```
 
-## API Endpoints
+### Get pending events
 
-### `GET /events/pending`
-
-Retrieves events that are approaching and need to be notified to clients.
-
-**Response:**
-```json
-{
-  "events": [
-    {
-      "id": 123,
-      "uid": "event-uid-123",
-      "title": "Team Meeting",
-      "description": "Weekly team meeting to discuss project progress",
-      "location": "Conference Room 3",
-      "start_datetime": "2023-06-15T10:00:00Z",
-      "end_datetime": "2023-06-15T11:00:00Z",
-      "all_day": false
-    }
-  ]
-}
+```bash
+curl -H "X-Auth-Token: your-api-key" \
+  http://localhost:8080/events/pending?user_id=123456789
 ```
 
-### `POST /notifications/{id}/delivered`
+### List calendars
 
-Confirms that a notification has been successfully delivered to the client.
-
-**Request:**
-```json
-{
-  "delivered_at": "2023-06-15T09:30:00Z"
-}
+```bash
+curl -H "X-Auth-Token: your-api-key" \
+  http://localhost:8080/calendars
 ```
 
-**Response:**
-```json
-{
-  "status": "success",
-  "message": "Notification marked as delivered",
-  "event_id": 123
-}
+### Delete a calendar
+
+```bash
+curl -X DELETE -H "X-Auth-Token: your-api-key" \
+  http://localhost:8080/calendars/<calendar_id>
 ```
 
-### `GET /health`
+### Health check
 
-Returns the health status of the service.
-
-**Response:**
-```json
-{
-  "status": "healthy",
-  "timestamp": "2023-06-15T09:30:00Z",
-  "version": "1.0.0"
-}
+```bash
+curl http://localhost:8080/health
 ```
 
-## Environment Variables
+## Architecture
 
-- `ICS_GATE_API_KEY`: API key for authentication
-- `DB_PATH`: Path to SQLite database (default: ./icsgate.db)
-- `TIMEZONE_DEFAULT`: Default timezone (default: UTC)
+### Database Tables
+
+1. **calendars** - Registered calendars with chat bindings
+   - `id` - Primary key
+   - `user_id` - User identifier (kept for backward compatibility)
+   - `chat_id` - Chat ID (Telegram or Max)
+   - `chat_type` - Chat type (`tg` or `max`)
+   - `url` - Calendar URL (ICS or CalDAV)
+   - `client_type` - Client type (`ics` or `caldav`)
+   - `timezone` - Calendar timezone
+   - `last_sync_at` - Last sync timestamp
+   - `sync_hash` - Sync hash (ICS only)
+
+2. **sent_notifications** - Sent notification tracking
+   - `id` - Primary key
+   - `calendar_id` - Calendar reference
+   - `event_uid` - Event UID
+   - `chat_id` - Target chat
+   - `event_data` - Full event JSON
+   - `sent_at` - Sent timestamp
+
+### Data Flow
+
+1. **Calendar Registration**: API accepts `chat_id`, `chat_type`, and `url`
+2. **Background Notification Check**: Iterates calendars with `chat_id`, fetches events for the notification window, checks `sent_notifications` for duplicates, sends to chat bot
+3. **Pending Events API**: Fetches events on-demand, filters by user_id, returns not-yet-sent events
+4. **ICS Mode**: Downloads and parses ICS, sends notifications, does not store events
+5. **CalDAV Mode**: Fetches events via CalDAV protocol on-demand
 
 ## Development
-
-### Prerequisites
-
-- Python 3.8+
-- Docker and Docker Compose (for containerized deployment)
 
 ### Setup
 
 1. Create a virtual environment:
    ```bash
    python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   source venv/bin/activate
    ```
 
 2. Install dependencies:
@@ -150,11 +136,6 @@ Returns the health status of the service.
 
 ## Testing
 
-Run tests with pytest:
 ```bash
 pytest
 ```
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

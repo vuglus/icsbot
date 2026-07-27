@@ -8,3 +8,5 @@ python-decouple>=3.4.0
 pytest
 ydb>=3.0.0
 pytz
+caldav>=1.0.0
+apscheduler>=3.10.0
