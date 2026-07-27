@@ -6,7 +6,6 @@ import sys
 import logging
 from pathlib import Path
 
-# Add the parent directory to the path so we can import our modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from services.database import Database
@@ -14,82 +13,96 @@ from services.database_provider import DatabaseProvider
 from services.config_service import Config
 from migrations.migration_manager import MigrationManager
 
+
 class TestInitialMigration(unittest.TestCase):
     def setUp(self):
-        # Create a temporary database file for testing
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.temp_db.close()
-        
-        # Set up logging to see what's happening
         logging.basicConfig(level=logging.INFO)
 
     def tearDown(self):
-        # Clean up the temporary database file
         os.unlink(self.temp_db.name)
 
     def test_initial_migration_creates_tables(self):
         """Test that the initial migration creates all required tables"""
-        config = Config({
-            'DB_PATH': self.temp_db.name,
-            'DB_PROVIDER': 'sqlite'
-        })
-        
-        # Initialize the database
+        config = Config(
+            {
+                "DB_PATH": self.temp_db.name,
+                "DB_PROVIDER": "sqlite",
+            }
+        )
+
         provider = DatabaseProvider(config)
         db = Database(provider, config)
-        
-        # Check that tables were created
+
         conn = provider.getConnection()
         cursor = conn.cursor()
-        
-        # Check users table
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
-        self.assertIsNotNone(cursor.fetchone(), "users table should exist")
-        
-        # Check calendars table
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='calendars'")
+
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='calendars'"
+        )
         self.assertIsNotNone(cursor.fetchone(), "calendars table should exist")
-        
-        # Check events table
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='events'")
-        self.assertIsNotNone(cursor.fetchone(), "events table should exist")
-        
-        # Check indexes
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_calendars_user_id'")
-        self.assertIsNotNone(cursor.fetchone(), "idx_calendars_user_id index should exist")
-        
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_events_calendar_id'")
-        self.assertIsNotNone(cursor.fetchone(), "idx_events_calendar_id index should exist")
-        
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_events_start_datetime'")
-        self.assertIsNotNone(cursor.fetchone(), "idx_events_start_datetime index should exist")
-        
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_events_notified'")
-        self.assertIsNotNone(cursor.fetchone(), "idx_events_notified index should exist")
-        
+
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='sent_notifications'"
+        )
+        self.assertIsNotNone(cursor.fetchone(), "sent_notifications table should exist")
+
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='migrations'"
+        )
+        self.assertIsNotNone(cursor.fetchone(), "migrations table should exist")
+
+        conn.close()
+
+    def test_old_tables_do_not_exist(self):
+        """Test that old tables (users, events) are not created"""
+        config = Config(
+            {
+                "DB_PATH": self.temp_db.name,
+                "DB_PROVIDER": "sqlite",
+            }
+        )
+
+        provider = DatabaseProvider(config)
+        db = Database(provider, config)
+
+        conn = provider.getConnection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
+        )
+        self.assertIsNone(cursor.fetchone(), "users table should NOT exist")
+
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='events'"
+        )
+        self.assertIsNone(cursor.fetchone(), "events table should NOT exist")
+
         conn.close()
 
     def test_init_db_runs_migrations(self):
         """Test that init_db function runs migrations successfully"""
-        config = Config({
-            'DB_PATH': self.temp_db.name,
-            'DB_PROVIDER': 'sqlite'
-        })
-        
-        # Initialize the database
+        config = Config(
+            {
+                "DB_PATH": self.temp_db.name,
+                "DB_PROVIDER": "sqlite",
+            }
+        )
+
         provider = DatabaseProvider(config)
         db = Database(provider, config)
-        
-        # Check that tables were created
+
         conn = provider.getConnection()
         cursor = conn.cursor()
-        
-        # Check that at least one table exists
+
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         tables = cursor.fetchall()
         self.assertGreater(len(tables), 0, "Should have created at least one table")
-        
+
         conn.close()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

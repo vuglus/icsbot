@@ -3,190 +3,184 @@ import ydb
 import uuid
 from datetime import datetime
 from typing import List, Optional
-from entity.base import BaseCalendarEntity, Calendar, User
-from entity.ydb.user_entity import UserEntity
+from entity.base import BaseCalendarEntity, Calendar
 
-# Configure logging
 logger = logging.getLogger(__name__)
 
 
 class CalendarEntity(BaseCalendarEntity):
-    """YDB implementation for calendar-related database operations"""
-    
-    def __init__(self, session_pool, user_entity):
+    def __init__(self, session_pool):
         self.session_pool = session_pool
-        self.user_entity = user_entity
-    
-    def create_calendar(self, user_id: str, url: str) -> Calendar:
-        """Create a new calendar for a user"""
+
+    def create_calendar(
+        self, chat_id: str, chat_type: str, url: str, client_type: str = "ics"
+    ) -> Calendar:
         def callee(session):
-
-            calendar = self.get_calendar_by_user_id_and_url(user_id, url)
-            if calendar is not None:
-                return calendar
-            
-            id = uuid.uuid4().hex
-
-            # First try to insert the calendar
+            existing = self._get_by_chat_and_url(chat_id, url, session)
+            if existing is not None:
+                return existing
+            cal_id = uuid.uuid4().hex
             query = """
             DECLARE $id AS Utf8;
             DECLARE $user_id AS Utf8;
+            DECLARE $chat_id AS Utf8;
+            DECLARE $chat_type AS Utf8;
             DECLARE $url AS Utf8;
-            UPSERT INTO calendars (id, user_id, url, timezone) VALUES ($id, $user_id, $url, 'GMT+3');
+            DECLARE $client_type AS Utf8;
+            UPSERT INTO calendars (id, user_id, chat_id, chat_type, url, client_type, timezone)
+            VALUES ($id, $user_id, $chat_id, $chat_type, $url, $client_type, 'GMT+3');
             """
-            prepared_query = session.prepare(query)
+            prepared = session.prepare(query)
             session.transaction().execute(
-                prepared_query,
-                parameters={"$id": id, "$user_id": user_id, "$url": url},
+                prepared,
+                parameters={
+                    "$id": cal_id,
+                    "$user_id": chat_id,
+                    "$chat_id": chat_id,
+                    "$chat_type": chat_type,
+                    "$url": url,
+                    "$client_type": client_type,
+                },
                 commit_tx=True,
             )
-
-            return self.get_calendar_by_user_id_and_url(user_id, url)
-        
-        return self.session_pool.retry_operation_sync(callee)
-    
-    def get_calendar_by_user_id_and_url(self, user_id: str, url: str) -> Optional[Calendar]:
-        """Get a calendar by user_id and url"""
-        def callee(session):
-                        # Then retrieve the calendar to get the ID
-            query = """
-            DECLARE $user_id AS Utf8;
-            DECLARE $url AS Utf8;
-            SELECT id, user_id, url, last_sync_at, sync_hash, timezone FROM calendars 
-            WHERE user_id = $user_id AND url = $url;
-            """
-            prepared_query = session.prepare(query)
-            result = session.transaction().execute(
-                prepared_query,
-                parameters={"$user_id": user_id, "$url": url},
-                commit_tx=True,
-            )
-            
-            if result[0].rows:
-                row = result[0].rows[0]
-                return Calendar(
-                    row.id, 
-                    row.user_id, 
-                    row.url,
-                    str(row.last_sync_at) if row.last_sync_at else None,
-                    row.sync_hash,
-                    row.timezone
-                )
+            return self._get_by_chat_and_url(chat_id, url, session)
 
         return self.session_pool.retry_operation_sync(callee)
 
-    
-    def get_calendars(self, user_id: str = None) -> List[Calendar]:
-        """Get all calendars, optionally filtered by user_id"""
+    def _get_by_chat_and_url(
+        self, chat_id: str, url: str, session
+    ) -> Optional[Calendar]:
+        query = """
+        DECLARE $chat_id AS Utf8;
+        DECLARE $url AS Utf8;
+        SELECT id, user_id, url, last_sync_at, sync_hash, timezone, chat_id, chat_type, client_type
+        FROM calendars WHERE user_id = $chat_id AND url = $url;
+        """
+        prepared = session.prepare(query)
+        result = session.transaction().execute(
+            prepared,
+            parameters={"$chat_id": chat_id, "$url": url},
+            commit_tx=True,
+        )
+        if result[0].rows:
+            row = result[0].rows[0]
+            return Calendar(
+                row.id,
+                row.user_id,
+                row.url,
+                str(row.last_sync_at) if row.last_sync_at else None,
+                row.sync_hash,
+                row.timezone,
+                row.chat_id if hasattr(row, "chat_id") else None,
+                row.chat_type if hasattr(row, "chat_type") else None,
+                row.client_type if hasattr(row, "client_type") else "ics",
+            )
+        return None
+
+    def get_calendars(self, chat_id: str = None) -> List[Calendar]:
         def callee(session):
-            if user_id:
-                # First get the user's internal ID
-                user_internal_id = self.user_entity.get_user_id_by_external_id(user_id)
-                if not user_internal_id:
-                    raise ValueError(f"User {user_id} not found")
-                
+            if chat_id:
                 query = """
-                DECLARE $user_id AS Utf8;
-                SELECT id, user_id, url, last_sync_at, sync_hash, timezone FROM calendars 
-                WHERE user_id = $user_id;
+                DECLARE $chat_id AS Utf8;
+                SELECT id, user_id, url, last_sync_at, sync_hash, timezone, chat_id, chat_type, client_type
+                FROM calendars WHERE user_id = $chat_id;
                 """
-                prepared_query = session.prepare(query)
+                prepared = session.prepare(query)
                 result = session.transaction().execute(
-                    prepared_query,
-                    parameters={"$user_id": user_internal_id},
+                    prepared,
+                    parameters={"$chat_id": chat_id},
                     commit_tx=True,
                 )
             else:
-                query = """
-                SELECT id, user_id, url, last_sync_at, sync_hash, timezone FROM calendars;
-                """
-                prepared_query = session.prepare(query)
-                result = session.transaction().execute(
-                    prepared_query,
-                    commit_tx=True,
-                )
-            
+                query = "SELECT id, user_id, url, last_sync_at, sync_hash, timezone, chat_id, chat_type, client_type FROM calendars;"
+                prepared = session.prepare(query)
+                result = session.transaction().execute(prepared, commit_tx=True)
             calendars = []
             for row in result[0].rows:
-                calendar = Calendar(
-                    row.id,
-                    row.user_id,
-                    row.url,
-                    str(row.last_sync_at) if row.last_sync_at else None,
-                    row.sync_hash,
-                    row.timezone
+                calendars.append(
+                    Calendar(
+                        row.id,
+                        row.user_id,
+                        row.url,
+                        str(row.last_sync_at) if row.last_sync_at else None,
+                        row.sync_hash,
+                        row.timezone,
+                        row.chat_id if hasattr(row, "chat_id") else None,
+                        row.chat_type if hasattr(row, "chat_type") else None,
+                        row.client_type if hasattr(row, "client_type") else "ics",
+                    )
                 )
-                calendars.append(calendar)
-            
             return calendars
-        
+
         return self.session_pool.retry_operation_sync(callee)
-    
-    def delete_calendar(self, calendar_id: str, user_id: str = None) -> bool:
-        """Delete a calendar by ID, optionally checking user ownership"""
+
+    def get_calendars_with_chat(self) -> List[Calendar]:
         def callee(session):
-            if user_id:
-                # First get the user's internal ID
-                user_internal_id = self.user_entity.get_user_id_by_external_id(user_id)
-                if not user_internal_id:
-                    raise ValueError(f"User {user_id} not found")
-                
-                # Delete only if the calendar belongs to this user
+            query = """
+            SELECT id, user_id, url, last_sync_at, sync_hash, timezone, chat_id, chat_type, client_type
+            FROM calendars WHERE chat_id IS NOT NULL;
+            """
+            prepared = session.prepare(query)
+            result = session.transaction().execute(prepared, commit_tx=True)
+            calendars = []
+            for row in result[0].rows:
+                calendars.append(
+                    Calendar(
+                        row.id,
+                        row.user_id,
+                        row.url,
+                        str(row.last_sync_at) if row.last_sync_at else None,
+                        row.sync_hash,
+                        row.timezone,
+                        row.chat_id if hasattr(row, "chat_id") else None,
+                        row.chat_type if hasattr(row, "chat_type") else None,
+                        row.client_type if hasattr(row, "client_type") else "ics",
+                    )
+                )
+            return calendars
+
+        return self.session_pool.retry_operation_sync(callee)
+
+    def delete_calendar(self, calendar_id: str, chat_id: str = None) -> bool:
+        def callee(session):
+            if chat_id:
                 query = """
                 DECLARE $id AS Utf8;
-                DECLARE $user_id AS Utf8;
-                DELETE FROM calendars WHERE id = $id AND user_id = $user_id;
+                DECLARE $chat_id AS Utf8;
+                DELETE FROM calendars WHERE id = $id AND user_id = $chat_id;
                 """
-                prepared_query = session.prepare(query)
-                result = session.transaction().execute(
-                    prepared_query,
-                    parameters={"$id": calendar_id, "$user_id": user_internal_id},
+                prepared = session.prepare(query)
+                session.transaction().execute(
+                    prepared,
+                    parameters={"$id": calendar_id, "$chat_id": chat_id},
                     commit_tx=True,
                 )
             else:
-                # Delete any calendar (admin access)
-                query = """
-                DECLARE $id AS Utf8;
-                DELETE FROM calendars WHERE id = $id;
-                """
-                prepared_query = session.prepare(query)
-                result = session.transaction().execute(
-                    prepared_query,
-                    parameters={"$id": calendar_id},
-                    commit_tx=True,
+                query = "DECLARE $id AS Utf8; DELETE FROM calendars WHERE id = $id;"
+                prepared = session.prepare(query)
+                session.transaction().execute(
+                    prepared, parameters={"$id": calendar_id}, commit_tx=True
                 )
-            
-            # YDB doesn't return row count, so we'll check if the calendar exists after deletion
-            check_query = """
-            DECLARE $id AS Utf8;
-            SELECT id FROM calendars WHERE id = $id;
-            """
-            check_prepared = session.prepare(check_query)
+            check = "DECLARE $id AS Utf8; SELECT id FROM calendars WHERE id = $id;"
+            check_prep = session.prepare(check)
             check_result = session.transaction().execute(
-                check_prepared,
-                parameters={"$id": calendar_id},
-                commit_tx=True,
+                check_prep, parameters={"$id": calendar_id}, commit_tx=True
             )
-            
             return len(check_result[0].rows) == 0
-        
+
         return self.session_pool.retry_operation_sync(callee)
-    
-    def get_calendar_by_id(self, calendar_id: str) -> Calendar:
-        """Get a specific calendar by ID"""
+
+    def get_calendar_by_id(self, calendar_id: str) -> Optional[Calendar]:
         def callee(session):
             query = """
             DECLARE $id AS Utf8;
-            SELECT id, user_id, url, last_sync_at, sync_hash, timezone FROM calendars 
-            WHERE id = $id;
+            SELECT id, user_id, url, last_sync_at, sync_hash, timezone, chat_id, chat_type, client_type
+            FROM calendars WHERE id = $id;
             """
-            prepared_query = session.prepare(query)
+            prepared = session.prepare(query)
             result = session.transaction().execute(
-                prepared_query,
-                parameters={"$id": calendar_id},
-                commit_tx=True,
+                prepared, parameters={"$id": calendar_id}, commit_tx=True
             )
-            
             if result[0].rows:
                 row = result[0].rows[0]
                 return Calendar(
@@ -195,47 +189,28 @@ class CalendarEntity(BaseCalendarEntity):
                     row.url,
                     str(row.last_sync_at) if row.last_sync_at else None,
                     row.sync_hash,
-                    row.timezone
+                    row.timezone,
+                    row.chat_id if hasattr(row, "chat_id") else None,
+                    row.chat_type if hasattr(row, "chat_type") else None,
+                    row.client_type if hasattr(row, "client_type") else "ics",
                 )
-            else:
-                return None
-        
+            return None
+
         return self.session_pool.retry_operation_sync(callee)
-    
+
     def update_calendar_sync(self, calendar_id: str, sync_hash: str):
-        """Update calendar sync metadata"""
         def callee(session):
             query = """
             DECLARE $id AS Utf8;
             DECLARE $sync_hash AS Utf8;
-            UPDATE calendars SET last_sync_at = CurrentUtcTimestamp(), sync_hash = $sync_hash 
-            WHERE id = $id;
+            UPDATE calendars SET last_sync_at = CurrentUtcTimestamp(), sync_hash = $sync_hash WHERE id = $id;
             """
-            prepared_query = session.prepare(query)
+            prepared = session.prepare(query)
             session.transaction().execute(
-                prepared_query,
+                prepared,
                 parameters={"$id": calendar_id, "$sync_hash": sync_hash},
                 commit_tx=True,
             )
-            
             logger.info(f"Updated sync metadata for calendar {calendar_id}")
-        
-        return self.session_pool.retry_operation_sync(callee)
-    
-    def get_existing_event_uids(self, calendar_id: str) -> set:
-        """Get existing event UIDs for a calendar"""
-        def callee(session):
-            query = """
-            DECLARE $calendar_id AS Utf8;
-            SELECT uid FROM events WHERE calendar_id = $calendar_id;
-            """
-            prepared_query = session.prepare(query)
-            result = session.transaction().execute(
-                prepared_query,
-                parameters={"$calendar_id": calendar_id},
-                commit_tx=True,
-            )
-            
-            return {row.uid for row in result[0].rows}
-        
+
         return self.session_pool.retry_operation_sync(callee)

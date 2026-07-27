@@ -1,111 +1,104 @@
+import json
 import logging
-from entity.base import Calendar, User
+from datetime import datetime, timedelta, date, time
+from typing import List, Optional
+
+from entity.base import Calendar
 from services.database import Database
-from services.ics_parser import download_ics_content, calculate_content_hash, parse_ics_content
+from services.config_service import Config
+from services.ics_parser import download_ics_content, parse_ics_content, IcsEvent
+from services.caldav_client import CaldavClient, CaldavEvent
+
 logger = logging.getLogger(__name__)
-logger.info("Starting calendar synchronization")
+
 
 class CalendarService:
-    def __init__(self, database: Database, tzone: str = 'UTC+3'):
+    def __init__(self, database: Database, config: Config):
         self.db = database
-        self.users = self.db.getUser()
-        self.events = self.db.getEvent()
         self.calendars = self.db.getCalendar()
-        self.tzone = tzone
+        self.config = config
 
-    def create_user(self, user_id: str) -> User:
-        """Create a new user"""
-        return self.users.create_user(user_id)
-    
-    def create_calendar(self, user_id: str, url: str) -> Calendar:
-        """Create a new calendar"""
-        return self.calendars.create_calendar(user_id, url)
-    
-    def get_calendars(self, user_id: str = None):
-        """Get all calendars, optionally filtered by user_id"""
-        return self.calendars.get_calendars(user_id)
+    def create_calendar(
+        self, chat_id: str, chat_type: str, url: str, client_type: str = "ics"
+    ) -> Calendar:
+        return self.calendars.create_calendar(chat_id, chat_type, url, client_type)
 
-    def get_calendar_by_id(self, calendar_id: str):
-        """Get a calendar by ID"""
+    def get_calendar_by_id(self, calendar_id: str) -> Optional[Calendar]:
         return self.calendars.get_calendar_by_id(calendar_id)
 
-    def sync_all_calendars(self):
-        """Sync all calendars"""
-        logger.info("Starting calendar synchronization")
-        
-        calendars = self.calendars.get_calendars()
-        success_count = 0
-        
-        for calendar in calendars:
-            if self.sync_calendar(calendar):
-                success_count += 1
-        
-        logger.info(f"Calendar synchronization complete: {success_count}/{len(calendars)} successful")
+    def get_calendars(self, chat_id: str = None) -> List[Calendar]:
+        return self.calendars.get_calendars(chat_id)
 
-        return success_count == len(calendars)
-    
-    def sync_calendar(self, calendar: Calendar) -> bool:
-        """Sync a single calendar using upsert logic"""
+    def delete_calendar(self, calendar_id: str, chat_id: str = None) -> bool:
+        return self.calendars.delete_calendar(calendar_id, chat_id)
+
+    def fetch_events(self, calendar: Calendar) -> List:
+        if calendar.client_type == "caldav":
+            return self._fetch_caldav_events(calendar)
+        else:
+            return self._fetch_ics_events(calendar)
+
+    def _fetch_caldav_events(self, calendar: Calendar) -> List[CaldavEvent]:
         try:
-            logger.info(f"Syncing calendar {calendar.id} from {calendar.url}")
-            
-            # Download ICS content
+            client = CaldavClient(calendar.url)
+            now = datetime.now()
+            window_start = now - timedelta(hours=6)
+            window_end = now + timedelta(days=1)
+            return client.get_events(start=window_start, end=window_end)
+        except Exception as e:
+            logger.error(
+                f"Error fetching CalDAV events for calendar {calendar.id}: {e}"
+            )
+            return []
+
+    def _fetch_ics_events(self, calendar: Calendar) -> List[IcsEvent]:
+        try:
             ics_content = download_ics_content(calendar.url)
-            
-            # Calculate hash to detect changes
-            content_hash = calculate_content_hash(ics_content)
-            
-            # Skip if no changes
-            if calendar.sync_hash == content_hash:
-                logger.info(f"Calendar {calendar.id} unchanged, skipping")
-                return True
-            
-            # Parse events
-            events = parse_ics_content(ics_content, self.tzone)
-            
-            # Get existing event UIDs for this calendar
-            existing_uids = self.calendars.get_existing_event_uids(calendar.id)
-            
-            # Track which events we're updating/inserting
-            updated_uids = set()
-            
-            # Upsert events
-            for event_data in events:
-                uid = event_data['uid']
-                updated_uids.add(uid)
-                
-                # Upsert event using EventEntity
-                self.events.upsert_event(
-                    calendar.id, uid, event_data['summary'], event_data['description'],
-                    event_data['location'], event_data['start'], event_data['end'],
-                    event_data['all_day']
+            events = parse_ics_content(
+                ics_content, calendar.timezone or self.config.getTZone()
+            )
+            return events
+        except Exception as e:
+            logger.error(f"Error fetching ICS events for calendar {calendar.id}: {e}")
+            return []
+
+    def get_upcoming_events(
+        self, calendar: Calendar, notify_before_minutes: int
+    ) -> List:
+        all_events = self.fetch_events(calendar)
+        now = datetime.now()
+        window_end = now + timedelta(minutes=notify_before_minutes)
+        upcoming = []
+        for event in all_events:
+            try:
+                from dateutil import parser
+
+                event_start = (
+                    parser.isoparse(event.start)
+                    if isinstance(event.start, str)
+                    else event.start
                 )
-                logger.info(f"Upserted event {uid} for calendar {calendar.id}")
-            
-            # Delete events that no longer exist in the calendar
-            deleted_uids = existing_uids - updated_uids
-            self.events.delete_events_by_uids(calendar.id, deleted_uids)
-            
-            # Update sync metadata
-            self.calendars.update_calendar_sync(calendar.id, content_hash)
-            
-            logger.info(f"Synced calendar {calendar.id}: {len(events)} events, {len(deleted_uids)} deleted")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error syncing calendar {calendar.id}: {e}")
-            return False
-    
-    def sync_calendar_by_id(self, calendar_id: str) -> bool:
-        """Sync a specific calendar by ID"""
-        try:
-            calendar = self.calendars.get_calendar_by_id(calendar_id)
-            if not calendar:
-                logger.error(f"Calendar with ID {calendar_id} not found")
-                return False
-            
-            return self.sync_calendar(calendar)
-            
-        except Exception as e:
-            logger.error(f"Error syncing calendar {calendar_id}: {e}")
-            return False
+                if event_start and now <= event_start <= window_end:
+                    upcoming.append(event)
+            except Exception as e:
+                logger.warning(f"Error checking event time for {event.uid}: {e}")
+        return upcoming
+
+    def sync_all_calendars(self):
+        logger.info("Starting calendar synchronization")
+        calendars = self.calendars.get_calendars_with_chat()
+        success_count = 0
+        for calendar in calendars:
+            try:
+                logger.info(
+                    f"Syncing calendar {calendar.id} for chat {calendar.chat_id}"
+                )
+                events = self.fetch_events(calendar)
+                logger.info(f"Fetched {len(events)} events for calendar {calendar.id}")
+                self.calendars.update_calendar_sync(calendar.id, "")
+                success_count += 1
+            except Exception as e:
+                logger.error(f"Error syncing calendar {calendar.id}: {e}")
+        logger.info(
+            f"Calendar sync complete: {success_count}/{len(calendars)} successful"
+        )

@@ -13,140 +13,97 @@ from services.database_provider import DatabaseProvider
 
 class TestCalendarTimezoneAPI(unittest.TestCase):
     """Test cases for calendar timezone API endpoints"""
-    
+
     def setUp(self):
         """Set up test environment"""
-        # Set API key for testing
-        os.environ['ICS_GATE_API_KEY'] = 'test-api-key'
-        
-        # Create a temporary database for testing
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        os.environ["ICS_GATE_API_KEY"] = "test-api-key"
+
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.temp_db.close()
-        
-        config = Config({
-            'api_key': 'test-api-key',
-            'DB_PROVIDER': 'sqlite',
-            'DB_PATH': self.temp_db.name,
-        })
-        
-        # Initialize the database
-        provider = DatabaseProvider(config)
-        db = Database(provider, config)
-        
-        # Set up Flask app for testing
+
+        config = Config(
+            {
+                "api_key": "test-api-key",
+                "DB_PROVIDER": "sqlite",
+                "DB_PATH": self.temp_db.name,
+            }
+        )
+
+        self.provider = DatabaseProvider(config)
+        self.db = Database(self.provider, config)
+
         self.app = Flask(__name__)
         self.app.config["TESTING"] = True
         self.app.config["API_TITLE"] = "ICS Bot API"
         self.app.config["API_VERSION"] = "v1"
         self.app.config["OPENAPI_VERSION"] = "3.0.2"
-        
-        # Initialize API endpoints
+
         api = Api(self.app)
-        # Create a mock auth service for testing
+
         class MockAuthService:
             def validate_api_key(self):
                 return True
-        auth_service = MockAuthService()
-        
-        app_instance = App()
-        app_instance.initialize_api(api, auth_service, None, None)
-        
-        # Create test client after full initialization
+
+        self.auth_service = MockAuthService()
+
+        from services.calendar_service import CalendarService
+        from services.notification_service import NotificationService
+        from services.api_endpoints import create_endpoints
+
+        self.calendar_service = CalendarService(self.db, config)
+        self.notification_service = NotificationService(
+            self.db, config, self.calendar_service
+        )
+
+        blueprints = create_endpoints(
+            self.auth_service, self.calendar_service, self.notification_service
+        )
+        for name, blueprint in blueprints.items():
+            if hasattr(blueprint, "name") and blueprint.name:
+                api.register_blueprint(blueprint)
+
         self.client = self.app.test_client()
-        
+
     def tearDown(self):
         """Tear down test environment"""
-        # Clean up temporary database
+        if hasattr(self, "provider") and self.provider:
+            self.provider.close()
         if os.path.exists(self.temp_db.name):
             os.unlink(self.temp_db.name)
-            
-    def test_update_calendar_timezone_success(self):
-        """Test successful calendar timezone update"""
-        # First create a calendar
+
+    def test_create_calendar_with_chat(self):
+        """Test creating a calendar with chat_id and chat_type"""
         calendar_data = {
-            'user_id': 'test_user',
-            'url': 'https://example.com/calendar.ics'
+            "chat_id": "test_chat",
+            "chat_type": "tg",
+            "url": "https://example.com/calendar.ics",
         }
-        
+
         response = self.client.post(
-            '/calendars',
-            json=calendar_data,
-            headers={'X-Auth-Token': 'test-api-key'}
+            "/calendars", json=calendar_data, headers={"X-Auth-Token": "test-api-key"}
         )
-        
+
         self.assertEqual(response.status_code, 201)
-        calendar = json.loads(response.data)['calendar']
-        calendar_id = calendar['id']
-        
-        # Update timezone
-        timezone_data = {
-            'timezone': 'Europe/Moscow'
-        }
-        
-        response = self.client.patch(
-            f'/calendars/{calendar_id}/timezone',
-            json=timezone_data,
-            headers={'X-Auth-Token': 'test-api-key'}
-        )
-        
-        # Check response
-        self.assertEqual(response.status_code, 200)
-        data = json.loads(response.data)
-        self.assertEqual(data['status'], 'success')
-        self.assertEqual(data['calendar']['timezone'], 'Europe/Moscow')
-        
-    def test_update_calendar_timezone_not_found(self):
-        """Test updating timezone for non-existent calendar"""
-        timezone_data = {
-            'timezone': 'Europe/Moscow'
-        }
-        
-        response = self.client.patch(
-            '/calendars/999999/timezone',
-            json=timezone_data,
-            headers={'X-Auth-Token': 'test-api-key'}
-        )
-        
-        # Check response
-        self.assertEqual(response.status_code, 404)
-        data = json.loads(response.data)
-        self.assertIn('error', data)
-        self.assertEqual(data['error']['code'], 404)
-        
-    def test_update_calendar_timezone_invalid_timezone(self):
-        """Test updating calendar with invalid timezone"""
-        # First create a calendar
+        calendar = json.loads(response.data)["calendar"]
+        self.assertEqual(calendar["chat_id"], "test_chat")
+        self.assertEqual(calendar["chat_type"], "tg")
+
+    def test_create_calendar_invalid_chat_type(self):
+        """Test creating calendar with invalid chat_type"""
         calendar_data = {
-            'user_id': 'test_user',
-            'url': 'https://example.com/calendar.ics'
+            "chat_id": "test_chat",
+            "chat_type": "invalid",
+            "url": "https://example.com/calendar.ics",
         }
-        
+
         response = self.client.post(
-            '/calendars',
-            json=calendar_data,
-            headers={'X-Auth-Token': 'test-api-key'}
+            "/calendars", json=calendar_data, headers={"X-Auth-Token": "test-api-key"}
         )
-        
-        self.assertEqual(response.status_code, 201)
-        calendar = json.loads(response.data)['calendar']
-        calendar_id = calendar['id']
-        
-        # Update with invalid timezone
-        timezone_data = {
-            'timezone': 'Invalid/Timezone'
-        }
-        
-        response = self.client.patch(
-            f'/calendars/{calendar_id}/timezone',
-            json=timezone_data,
-            headers={'X-Auth-Token': 'test-api-key'}
-        )
-        
-        # Check response
+
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.data)
-        self.assertIn('error', data)
-        self.assertEqual(data['error']['code'], 400)
+        self.assertIn("error", data)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

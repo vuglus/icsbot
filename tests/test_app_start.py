@@ -10,46 +10,53 @@ from services.database import Database
 
 class TestAppStart(unittest.TestCase):
     """Test app startup"""
-    
+
     def setUp(self):
         """Set up test environment"""
-        # Create a temporary database for testing
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.temp_db.close()
-        
+        self._orig_environ = os.environ.copy()
+
     def tearDown(self):
         """Tear down test environment"""
+        os.environ.clear()
+        os.environ.update(self._orig_environ)
         # Clean up temporary database
         if os.path.exists(self.temp_db.name):
-            os.unlink(self.temp_db.name)
-            
+            try:
+                os.unlink(self.temp_db.name)
+            except PermissionError:
+                pass
+
     def test_app_creation(self):
         """Test that app can be created"""
         # Set environment variables for testing
-        os.environ['ICS_GATE_API_KEY'] = 'test-api-key'
-        os.environ['DB_PROVIDER'] = 'sqlite'
-        os.environ['DB_PATH'] = self.temp_db.name
-        
+        os.environ["API_KEY"] = "test-api-key"
+        os.environ["DB_PROVIDER"] = "sqlite"
+        os.environ["DB_PATH"] = self.temp_db.name
+
         # Import app after setting environment variables
-        if 'app' in sys.modules:
-            del sys.modules['app']
-        app_module = importlib.import_module('app')
-        app = app_module.app
-        
+        if "app" in sys.modules:
+            del sys.modules["app"]
+        app_module = importlib.import_module("app")
+        app_instance = app_module.app
+        flask_app = app_instance.get_app()
+
         # Check that app was created successfully
-        self.assertIsNotNone(app)
-        self.assertEqual(app.config["API_TITLE"], "ICS Bot API")
-        self.assertEqual(app.config["API_VERSION"], "v1")
-        self.assertEqual(app.config["OPENAPI_VERSION"], "3.0.2")
-        
+        self.assertIsNotNone(flask_app)
+        self.assertEqual(flask_app.config["API_TITLE"], "ICS Bot API")
+        self.assertEqual(flask_app.config["API_VERSION"], "v1")
+        self.assertEqual(flask_app.config["OPENAPI_VERSION"], "3.0.2")
+
         # Test that we can create a test client
-        client = app.test_client()
+        client = flask_app.test_client()
         self.assertIsNotNone(client)
-        
+
         # Test that basic routes exist
-        response = client.get('/health')
+        response = client.get("/health")
         # Health endpoint should exist (200 or 401 if auth is required)
         self.assertIn(response.status_code, [200, 401])
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

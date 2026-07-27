@@ -6,113 +6,45 @@ from services.database_provider import DatabaseProvider
 from services.config_service import Config
 
 
-class TestUserFilteringDirect(unittest.TestCase):
-    """Test user filtering functionality directly"""
-    
+class TestCalendarFilteringDirect(unittest.TestCase):
+    """Test calendar filtering functionality directly"""
+
     def setUp(self):
         """Set up test environment"""
-        # Create a temporary database for testing
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.temp_db.close()
-        
+
     def tearDown(self):
         """Tear down test environment"""
-        # Clean up temporary database
         if os.path.exists(self.temp_db.name):
             os.unlink(self.temp_db.name)
-            
-    def test_get_users_with_calendars_direct(self):
-        """Test getting users with calendars directly"""
-        config = Config({
-            'DB_PROVIDER': 'sqlite',
-            'DB_PATH': self.temp_db.name,
-        })
-        
-        # Initialize the database
-        provider = DatabaseProvider(config)
-        db = Database(provider, config)
-        
-        # Initialize entities through the provider
-        user_entity, calendar_entity, event_entity, _ = provider.get_entities()
-        
-        # Create users
-        user1 = user_entity.create_user('user1@example.com')
-        user2 = user_entity.create_user('user2@example.com')
-        user3 = user_entity.create_user('user3@example.com')
-        
-        # Create calendars for some users
-        calendar_entity.create_calendar(user1.id, 'https://example.com/cal1.ics')
-        calendar_entity.create_calendar(user2.id, 'https://example.com/cal2.ics')
-        # user3 has no calendars
-        
-        # Get users with calendars directly
-        users_with_calendars = user_entity.get_users_with_calendars()
-        
-        # Should only return users with calendars
-        self.assertEqual(len(users_with_calendars), 2)
-        user_ids_with_calendars = [user['id'] for user in users_with_calendars]
-        self.assertIn(user1.id, user_ids_with_calendars)
-        self.assertIn(user2.id, user_ids_with_calendars)
-        self.assertNotIn(user3.id, user_ids_with_calendars)
-        
-    def test_get_users_with_pending_events_direct(self):
-        """Test getting users with pending events directly"""
-        config = Config({
-            'DB_PROVIDER': 'sqlite',
-            'DB_PATH': self.temp_db.name,
-        })
-        
-        # Initialize the database
-        provider = DatabaseProvider(config)
-        db = Database(provider, config)
-        
-        # Initialize entities through the provider
-        user_entity, calendar_entity, event_entity, _ = provider.get_entities()
-        
-        # Create users
-        user1 = user_entity.create_user('user1@example.com')
-        user2 = user_entity.create_user('user2@example.com')
-        user3 = user_entity.create_user('user3@example.com')
-        
-        # Create calendars
-        calendar_id1 = calendar_entity.create_calendar(user1.id, 'https://example.com/cal1.ics')
-        calendar_id2 = calendar_entity.create_calendar(user2.id, 'https://example.com/cal2.ics')
-        calendar_id3 = calendar_entity.create_calendar(user3.id, 'https://example.com/cal3.ics')
-        
-        # Create events for some users
-        event_entity.create_event(
-            calendar_id=calendar_id1,
-            uid='event1',
-            title='Event 1',
-            start_datetime='2023-01-01 10:00:00',
-            end_datetime='2023-01-01 11:00:00',
-            description='Test event',
-            location='',
-            all_day=False
-        )
-        
-        event_entity.create_event(
-            calendar_id=calendar_id2,
-            uid='event2',
-            title='Event 2',
-            start_datetime='2023-01-01 10:00:00',
-            end_datetime='2023-01-01 11:00:00',
-            description='Test event',
-            location='',
-            all_day=False
-        )
-        
-        # user3 has no events
-        
-        # Get users with pending events directly
-        users_with_events = user_entity.get_users_with_pending_events()
-        
-        # Should only return users with events
-        self.assertEqual(len(users_with_events), 2)
-        user_ids_with_events = [user['id'] for user in users_with_events]
-        self.assertIn(user1.id, user_ids_with_events)
-        self.assertIn(user2.id, user_ids_with_events)
-        self.assertNotIn(user3.id, user_ids_with_events)
 
-if __name__ == '__main__':
+    def test_get_calendars_with_chat_direct(self):
+        """Test getting calendars with chat_id directly"""
+        config = Config(
+            {
+                "DB_PROVIDER": "sqlite",
+                "DB_PATH": self.temp_db.name,
+            }
+        )
+
+        provider = DatabaseProvider(config)
+        db = Database(provider, config)
+
+        calendar_entity, _, _ = provider.get_entities()
+
+        calendar_entity.create_calendar("chat1", "tg", "https://example.com/cal1.ics")
+        calendar_entity.create_calendar("chat2", "max", "https://example.com/cal2.ics")
+
+        calendars_with_chat = calendar_entity.get_calendars_with_chat()
+
+        self.assertEqual(len(calendars_with_chat), 2)
+        chat_ids = [c.chat_id for c in calendars_with_chat]
+        self.assertIn("chat1", chat_ids)
+        self.assertIn("chat2", chat_ids)
+
+        provider.close()
+
+
+if __name__ == "__main__":
     unittest.main()
