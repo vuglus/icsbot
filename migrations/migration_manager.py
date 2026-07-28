@@ -10,6 +10,9 @@ from migrations.sqlite.initial_schema import (
 from migrations.sqlite.add_chat_columns import (
     AddChatColumnsMigration as SqliteAddChatColumnsMigration,
 )
+from migrations.sqlite.add_name_column import (
+    AddNameColumnMigration as SqliteAddNameColumnMigration,
+)
 
 from migrations.ydb.m20260218_migration_table import m20260218_migration_table
 from migrations.ydb.initial_schema import (
@@ -17,6 +20,9 @@ from migrations.ydb.initial_schema import (
 )
 from migrations.ydb.add_chat_columns import (
     AddChatColumnsMigration as YdbAddChatColumnsMigration,
+)
+from migrations.ydb.add_name_column import (
+    AddNameColumnMigration as YdbAddNameColumnMigration,
 )
 
 
@@ -62,11 +68,13 @@ class MigrationManager:
                 migrations = [
                     ("initial_schema", SqliteInitialSchemaMigration()),
                     ("add_chat_columns", SqliteAddChatColumnsMigration()),
+                    ("add_name_column", SqliteAddNameColumnMigration()),
                 ]
             elif self.provider == "ydb":
                 migrations = [
                     ("initial_schema", YdbInitialSchemaMigration()),
                     ("add_chat_columns", YdbAddChatColumnsMigration()),
+                    ("add_name_column", YdbAddNameColumnMigration()),
                 ]
             for name, migration_instance in migrations:
                 self.run_migration(name, migration_instance)
