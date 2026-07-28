@@ -103,9 +103,7 @@ class NotificationService:
                 "uid": event.uid or "",
                 "calendar_id": calendar.id,
                 "calendar_url": calendar.url,
-                "calendar_name": calendar.url.split("/")[-1].split("@")[0]
-                if "/" in calendar.url
-                else calendar.url,
+                "calendar_name": calendar.name or "",
             }
 
             headers = {"Content-Type": "application/json"}
