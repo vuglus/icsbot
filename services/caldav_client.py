@@ -3,7 +3,9 @@ from datetime import date, datetime, timedelta
 from typing import List, Optional
 
 import caldav
-from icalendar import Calendar as ICalendar
+from icalendar import Calendar as ICalendar, Event as IEvent
+import uuid
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -123,3 +125,66 @@ class CaldavClient:
                 f"Error fetching events from CalDAV calendar {self.calendar_url}: {e}"
             )
             return []
+
+    def create_event(
+        self,
+        summary: str,
+        start: datetime,
+        end: datetime,
+        description: str = "",
+        location: str = "",
+        all_day: bool = False,
+    ) -> Optional[str]:
+        try:
+            principal = self.client.principal()
+            calendars = principal.calendars()
+            target = None
+            for cal in calendars:
+                cal_id = str(cal.url).rstrip("/").split("/")[-1]
+                cal_name = str(cal.name) if cal.name else ""
+                if self.calendar_id == cal_id or self.calendar_id == cal_name:
+                    target = cal
+                    break
+            if not target:
+                logger.error(f"Calendar {self.calendar_id} not found on CalDAV server")
+                return None
+
+            event_uid = str(uuid.uuid4())
+            ical = ICalendar()
+            ical.add("prodid", "-//ICS-Gate//")
+            ical.add("version", "2.0")
+
+            vevent = IEvent()
+            vevent.add("uid", event_uid)
+            vevent.add("summary", summary)
+            if description:
+                vevent.add("description", description)
+            if location:
+                vevent.add("location", location)
+
+            if all_day:
+                vevent.add("dtstart", start.date())
+                vevent.add("dtend", end.date() if end else start.date())
+            else:
+                vevent.add("dtstart", start)
+                vevent.add("dtend", end)
+
+            ical.add_component(vevent)
+            target.save_event(ical.to_ical())
+
+            logger.info(
+                f"Created event {event_uid} in CalDAV calendar {self.calendar_url}"
+            )
+            return event_uid
+        except caldav.error.AuthorizationError as e:
+            logger.error(
+                f"Authorization denied for CalDAV calendar {self.calendar_url}: {e}"
+            )
+            raise PermissionError(
+                "Editing is not allowed for this calendar — the calendar is likely imported (read-only)"
+            )
+        except Exception as e:
+            logger.error(
+                f"Error creating event in CalDAV calendar {self.calendar_url}: {e}"
+            )
+            return None

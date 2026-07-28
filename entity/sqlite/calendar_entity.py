@@ -12,13 +12,18 @@ class CalendarEntity(BaseCalendarEntity):
         self.db_connection = db_connection
 
     def create_calendar(
-        self, chat_id: str, chat_type: str, url: str, client_type: str = "ics"
+        self,
+        chat_id: str,
+        chat_type: str,
+        url: str,
+        client_type: str = "ics",
+        name: str = None,
     ) -> Calendar:
         cursor = self.db_connection.cursor()
         try:
             cursor.execute(
-                "INSERT INTO calendars (user_id, chat_id, chat_type, url, client_type) VALUES (?, ?, ?, ?, ?)",
-                (chat_id, chat_id, chat_type, url, client_type),
+                "INSERT INTO calendars (user_id, chat_id, chat_type, url, client_type, name) VALUES (?, ?, ?, ?, ?, ?)",
+                (chat_id, chat_id, chat_type, url, client_type, name),
             )
             self.db_connection.commit()
             calendar_id = cursor.lastrowid
@@ -35,6 +40,7 @@ class CalendarEntity(BaseCalendarEntity):
                 chat_id,
                 chat_type,
                 client_type,
+                name,
             )
         except sqlite3.IntegrityError as e:
             self.db_connection.rollback()
@@ -56,6 +62,7 @@ class CalendarEntity(BaseCalendarEntity):
                     row["chat_id"] if "chat_id" in row.keys() else None,
                     row["chat_type"] if "chat_type" in row.keys() else None,
                     row["client_type"] if "client_type" in row.keys() else "ics",
+                    row["name"] if "name" in row.keys() else None,
                 )
             raise Exception("Failed to retrieve existing calendar")
 
@@ -76,6 +83,8 @@ class CalendarEntity(BaseCalendarEntity):
                 row["timezone"] if "timezone" in row.keys() else "GMT+3",
                 row["chat_id"] if "chat_id" in row.keys() else None,
                 row["chat_type"] if "chat_type" in row.keys() else None,
+                row["client_type"] if "client_type" in row.keys() else "ics",
+                row["name"] if "name" in row.keys() else None,
             )
             for row in rows
         ]
@@ -94,6 +103,8 @@ class CalendarEntity(BaseCalendarEntity):
                 row["timezone"] if "timezone" in row.keys() else "GMT+3",
                 row["chat_id"] if "chat_id" in row.keys() else None,
                 row["chat_type"] if "chat_type" in row.keys() else None,
+                row["client_type"] if "client_type" in row.keys() else "ics",
+                row["name"] if "name" in row.keys() else None,
             )
             for row in rows
         ]
@@ -125,6 +136,8 @@ class CalendarEntity(BaseCalendarEntity):
                 row["timezone"] if "timezone" in row.keys() else "GMT+3",
                 row["chat_id"] if "chat_id" in row.keys() else None,
                 row["chat_type"] if "chat_type" in row.keys() else None,
+                row["client_type"] if "client_type" in row.keys() else "ics",
+                row["name"] if "name" in row.keys() else None,
             )
         return None
 
@@ -136,3 +149,19 @@ class CalendarEntity(BaseCalendarEntity):
         )
         self.db_connection.commit()
         logger.info(f"Updated sync metadata for calendar {calendar_id}")
+
+    def update_calendar(self, calendar_id: str, **kwargs) -> Optional[Calendar]:
+        cursor = self.db_connection.cursor()
+        sets = []
+        params = []
+        for field in ("name", "url", "client_type", "timezone", "chat_id", "chat_type"):
+            if field in kwargs and kwargs[field] is not None:
+                sets.append(f"{field} = ?")
+                params.append(kwargs[field])
+        if not sets:
+            return self.get_calendar_by_id(calendar_id)
+        params.append(calendar_id)
+        cursor.execute(f"UPDATE calendars SET {', '.join(sets)} WHERE id = ?", params)
+        self.db_connection.commit()
+        logger.info(f"Updated calendar {calendar_id}")
+        return self.get_calendar_by_id(calendar_id)

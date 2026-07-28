@@ -13,7 +13,12 @@ class CalendarEntity(BaseCalendarEntity):
         self.session_pool = session_pool
 
     def create_calendar(
-        self, chat_id: str, chat_type: str, url: str, client_type: str = "ics"
+        self,
+        chat_id: str,
+        chat_type: str,
+        url: str,
+        client_type: str = "ics",
+        name: str = None,
     ) -> Calendar:
         def callee(session):
             existing = self._get_by_chat_and_url(chat_id, url, session)
@@ -27,8 +32,9 @@ class CalendarEntity(BaseCalendarEntity):
             DECLARE $chat_type AS Utf8;
             DECLARE $url AS Utf8;
             DECLARE $client_type AS Utf8;
-            UPSERT INTO calendars (id, user_id, chat_id, chat_type, url, client_type, timezone)
-            VALUES ($id, $user_id, $chat_id, $chat_type, $url, $client_type, 'GMT+3');
+            DECLARE $name AS Utf8;
+            UPSERT INTO calendars (id, user_id, chat_id, chat_type, url, client_type, timezone, name)
+            VALUES ($id, $user_id, $chat_id, $chat_type, $url, $client_type, 'GMT+3', $name);
             """
             prepared = session.prepare(query)
             session.transaction().execute(
@@ -40,6 +46,7 @@ class CalendarEntity(BaseCalendarEntity):
                     "$chat_type": chat_type,
                     "$url": url,
                     "$client_type": client_type,
+                    "$name": name or "",
                 },
                 commit_tx=True,
             )
@@ -53,7 +60,7 @@ class CalendarEntity(BaseCalendarEntity):
         query = """
         DECLARE $chat_id AS Utf8;
         DECLARE $url AS Utf8;
-        SELECT id, user_id, url, last_sync_at, sync_hash, timezone, chat_id, chat_type, client_type
+        SELECT id, user_id, url, last_sync_at, sync_hash, timezone, chat_id, chat_type, client_type, name
         FROM calendars WHERE user_id = $chat_id AND url = $url;
         """
         prepared = session.prepare(query)
@@ -74,6 +81,7 @@ class CalendarEntity(BaseCalendarEntity):
                 row.chat_id if hasattr(row, "chat_id") else None,
                 row.chat_type if hasattr(row, "chat_type") else None,
                 row.client_type if hasattr(row, "client_type") else "ics",
+                row.name if hasattr(row, "name") else None,
             )
         return None
 
@@ -82,7 +90,7 @@ class CalendarEntity(BaseCalendarEntity):
             if chat_id:
                 query = """
                 DECLARE $chat_id AS Utf8;
-                SELECT id, user_id, url, last_sync_at, sync_hash, timezone, chat_id, chat_type, client_type
+                SELECT id, user_id, url, last_sync_at, sync_hash, timezone, chat_id, chat_type, client_type, name
                 FROM calendars WHERE user_id = $chat_id;
                 """
                 prepared = session.prepare(query)
@@ -92,7 +100,7 @@ class CalendarEntity(BaseCalendarEntity):
                     commit_tx=True,
                 )
             else:
-                query = "SELECT id, user_id, url, last_sync_at, sync_hash, timezone, chat_id, chat_type, client_type FROM calendars;"
+                query = "SELECT id, user_id, url, last_sync_at, sync_hash, timezone, chat_id, chat_type, client_type, name FROM calendars;"
                 prepared = session.prepare(query)
                 result = session.transaction().execute(prepared, commit_tx=True)
             calendars = []
@@ -108,6 +116,7 @@ class CalendarEntity(BaseCalendarEntity):
                         row.chat_id if hasattr(row, "chat_id") else None,
                         row.chat_type if hasattr(row, "chat_type") else None,
                         row.client_type if hasattr(row, "client_type") else "ics",
+                        row.name if hasattr(row, "name") else None,
                     )
                 )
             return calendars
@@ -117,7 +126,7 @@ class CalendarEntity(BaseCalendarEntity):
     def get_calendars_with_chat(self) -> List[Calendar]:
         def callee(session):
             query = """
-            SELECT id, user_id, url, last_sync_at, sync_hash, timezone, chat_id, chat_type, client_type
+            SELECT id, user_id, url, last_sync_at, sync_hash, timezone, chat_id, chat_type, client_type, name
             FROM calendars WHERE chat_id IS NOT NULL;
             """
             prepared = session.prepare(query)
@@ -135,6 +144,7 @@ class CalendarEntity(BaseCalendarEntity):
                         row.chat_id if hasattr(row, "chat_id") else None,
                         row.chat_type if hasattr(row, "chat_type") else None,
                         row.client_type if hasattr(row, "client_type") else "ics",
+                        row.name if hasattr(row, "name") else None,
                     )
                 )
             return calendars
@@ -174,7 +184,7 @@ class CalendarEntity(BaseCalendarEntity):
         def callee(session):
             query = """
             DECLARE $id AS Utf8;
-            SELECT id, user_id, url, last_sync_at, sync_hash, timezone, chat_id, chat_type, client_type
+            SELECT id, user_id, url, last_sync_at, sync_hash, timezone, chat_id, chat_type, client_type, name
             FROM calendars WHERE id = $id;
             """
             prepared = session.prepare(query)
@@ -193,6 +203,7 @@ class CalendarEntity(BaseCalendarEntity):
                     row.chat_id if hasattr(row, "chat_id") else None,
                     row.chat_type if hasattr(row, "chat_type") else None,
                     row.client_type if hasattr(row, "client_type") else "ics",
+                    row.name if hasattr(row, "name") else None,
                 )
             return None
 
@@ -212,5 +223,32 @@ class CalendarEntity(BaseCalendarEntity):
                 commit_tx=True,
             )
             logger.info(f"Updated sync metadata for calendar {calendar_id}")
+
+        return self.session_pool.retry_operation_sync(callee)
+
+    def update_calendar(self, calendar_id: str, **kwargs) -> Optional[Calendar]:
+        def callee(session):
+            sets = []
+            declares = ["DECLARE $id AS Utf8;"]
+            params = {"$id": calendar_id}
+            for field, value in kwargs.items():
+                if value is not None and field in (
+                    "name",
+                    "url",
+                    "client_type",
+                    "timezone",
+                    "chat_id",
+                    "chat_type",
+                ):
+                    param = f"${field}"
+                    sets.append(f"{field} = {param}")
+                    params[param] = value
+                    declares.append(f"DECLARE ${field} AS Utf8;")
+            if not sets:
+                return self.get_calendar_by_id(calendar_id)
+            query = f"{' '.join(declares)} UPDATE calendars SET {', '.join(sets)} WHERE id = $id;"
+            prepared = session.prepare(query)
+            session.transaction().execute(prepared, parameters=params, commit_tx=True)
+            return self.get_calendar_by_id(calendar_id)
 
         return self.session_pool.retry_operation_sync(callee)

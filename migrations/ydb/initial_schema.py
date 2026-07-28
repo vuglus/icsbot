@@ -19,6 +19,7 @@ class InitialSchemaMigration(YdbMigration):
                     chat_type Utf8,
                     url Utf8,
                     client_type Utf8,
+                    name Utf8,
                     last_sync_at Timestamp,
                     sync_hash Utf8,
                     timezone Utf8,

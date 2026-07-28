@@ -15,6 +15,7 @@ class Calendar:
         chat_id: str = None,
         chat_type: str = None,
         client_type: str = "ics",
+        name: str = None,
     ):
         self.id = id
         self.user_id = user_id
@@ -25,6 +26,7 @@ class Calendar:
         self.chat_id = chat_id
         self.chat_type = chat_type
         self.client_type = client_type
+        self.name = name
 
 
 class SentNotification:
@@ -81,7 +83,12 @@ class BaseMigrationEntity(abc.ABC):
 class BaseCalendarEntity(abc.ABC):
     @abc.abstractmethod
     def create_calendar(
-        self, chat_id: str, chat_type: str, url: str, client_type: str = "ics"
+        self,
+        chat_id: str,
+        chat_type: str,
+        url: str,
+        client_type: str = "ics",
+        name: str = None,
     ) -> Calendar:
         pass
 
@@ -103,6 +110,10 @@ class BaseCalendarEntity(abc.ABC):
 
     @abc.abstractmethod
     def update_calendar_sync(self, calendar_id: str, sync_hash: str):
+        pass
+
+    @abc.abstractmethod
+    def update_calendar(self, calendar_id: str, **kwargs) -> Optional[Calendar]:
         pass
 
 

@@ -16,6 +16,7 @@ class InitialSchemaMigration(SqliteMigration):
                 chat_type TEXT,
                 url TEXT NOT NULL,
                 client_type TEXT DEFAULT 'ics',
+                name TEXT,
                 last_sync_at TIMESTAMP,
                 sync_hash TEXT,
                 timezone TEXT DEFAULT 'GMT+3',

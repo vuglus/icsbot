@@ -19,9 +19,16 @@ class CalendarService:
         self.config = config
 
     def create_calendar(
-        self, chat_id: str, chat_type: str, url: str, client_type: str = "ics"
+        self,
+        chat_id: str,
+        chat_type: str,
+        url: str,
+        client_type: str = "ics",
+        name: str = None,
     ) -> Calendar:
-        return self.calendars.create_calendar(chat_id, chat_type, url, client_type)
+        return self.calendars.create_calendar(
+            chat_id, chat_type, url, client_type, name
+        )
 
     def get_calendar_by_id(self, calendar_id: str) -> Optional[Calendar]:
         return self.calendars.get_calendar_by_id(calendar_id)
@@ -31,6 +38,9 @@ class CalendarService:
 
     def delete_calendar(self, calendar_id: str, chat_id: str = None) -> bool:
         return self.calendars.delete_calendar(calendar_id, chat_id)
+
+    def update_calendar(self, calendar_id: str, **kwargs) -> Optional[Calendar]:
+        return self.calendars.update_calendar(calendar_id, **kwargs)
 
     def fetch_events(self, calendar: Calendar) -> List:
         if calendar.client_type == "caldav":
@@ -83,6 +93,34 @@ class CalendarService:
             except Exception as e:
                 logger.warning(f"Error checking event time for {event.uid}: {e}")
         return upcoming
+
+    def add_event(
+        self,
+        calendar: Calendar,
+        summary: str,
+        start: str,
+        end: str,
+        description: str = "",
+        location: str = "",
+        all_day: bool = False,
+    ) -> Optional[str]:
+        if calendar.client_type != "caldav":
+            raise ValueError("Adding events is only supported for CalDAV calendars")
+
+        from dateutil import parser
+
+        dt_start = parser.isoparse(start)
+        dt_end = parser.isoparse(end) if end else None
+
+        client = CaldavClient(calendar.url)
+        return client.create_event(
+            summary=summary,
+            start=dt_start,
+            end=dt_end,
+            description=description,
+            location=location,
+            all_day=all_day,
+        )
 
     def sync_all_calendars(self):
         logger.info("Starting calendar synchronization")
