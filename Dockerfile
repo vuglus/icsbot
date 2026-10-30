@@ -25,7 +25,7 @@ WORKDIR /home/app
 COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
 
 # Copy application code
-COPY . ./ics-gate
+COPY --chown=app:app . ./ics-gate
 WORKDIR /home/app/ics-gate
 
 # Environment variables
